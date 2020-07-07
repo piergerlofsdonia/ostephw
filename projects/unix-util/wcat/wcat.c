@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 
 	if ( argc <= 1 ) {
 		fprintf(stderr, "No argument provided, enter a path to a program to print\n(e.g. ./wcat \"/media/<user>/src/file.c\")\n");
-		exit(EXIT_FAILURE);
+		exit(0);
 	}
 
 	for ( c = 1; c < argc; c++ ) {
@@ -30,6 +30,7 @@ int main(int argc, char **argv)
 		fclose(fileptr);
 	}
 	
+	return 0;
 }
 
 FILE *OpenFile(char *path, const char *mode, unsigned depth)
@@ -41,8 +42,8 @@ FILE *OpenFile(char *path, const char *mode, unsigned depth)
 	}
 
 	if ( depth > 0) {
-		fprintf(stderr, "Error [%d]: Opening %s\n", __LINE__, path);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "wcat: Cannot open file %s\n", path);
+		exit(1);
 	} else {
 		depth++;
 		fileptr = OpenFile(path, "ab+", depth);
