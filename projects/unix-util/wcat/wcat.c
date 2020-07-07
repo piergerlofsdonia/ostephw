@@ -19,38 +19,29 @@ int main(int argc, char **argv)
 	FILE *fileptr = NULL;
 
 	if ( argc <= 1 ) {
-		fprintf(stderr, "No argument provided, enter a path to a program to print\n(e.g. ./wcat \"/media/<user>/src/file.c\")\n");
+		/* This SHOULD be a while loop printing stdin -> stdout (see: wgrep) */
 		exit(0);
 	}
 
 	for ( c = 1; c < argc; c++ ) {
-		fileptr = OpenFile(argv[c], "r", 0);
+		fileptr = OpenFile(argv[c], "r");
 		CountLines(fileptr, 1);
-		fputs("\n", stdout);
 		fclose(fileptr);
 	}
 	
 	return 0;
 }
 
-FILE *OpenFile(char *path, const char *mode, unsigned depth)
+FILE *OpenFile(char *path, const char *mode)
 {
 	FILE *fileptr = fopen(path, mode);
-	
+
 	if ( fileptr != NULL ) {
-			return fileptr;
-	}
-
-	if ( depth > 0) {
-		fprintf(stderr, "wcat: Cannot open file %s\n", path);
-		exit(1);
-	} else {
-		depth++;
-		fileptr = OpenFile(path, "ab+", depth);
-		fileptr = freopen(path, mode, fileptr);
 		return fileptr;
-	} 
-
+	}
+	
+	fprintf(stdout, "wcat: cannot open file\n");
+	exit(EXIT_FAILURE);
 }
 
 int CountLines(FILE *fileptr, int print_flag)

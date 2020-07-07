@@ -6,6 +6,10 @@
 * wgrep: `Prints a line from a given file using a search term`.
 
 #### Currently working on:
-_Project:_ `unix-util/w`
+_Project:_ `unix-util/wzip&wunzip`
   
 _Homework:_ `ch 15.`
+
+#### Note:
+
+* The applications are written in such a way that they pass the OSTEP test suite, all removed code is commented (except for wcat).
