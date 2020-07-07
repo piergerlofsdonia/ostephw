@@ -6,6 +6,6 @@
 * wgrep: `Prints a line from a given file using a search term`.
 
 #### Currently working on:
-_Project:_ `unix-util/w`
+_Project:_ `unix-util/wgrep`
   
 _Homework:_ `ch 15.`

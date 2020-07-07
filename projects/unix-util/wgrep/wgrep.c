@@ -28,8 +28,8 @@ int main(int argc, char **argv)
 	unsigned arg = 2;
 
 	if ( argc < 2 ) { 
-		fprintf(stderr, "Invalid number of arguments given: [usage] ./program keyword path\n");
-		exit(1);
+		fprintf(stdout, "wgrep: searchterm [file ...]\n");
+		exit(EXIT_FAILURE); /* I honestly wouldn't put this here, as the nth file (next)_might work correctly... */
 	} else if ( argc < 3 ) {
 		return FAPstdin(argv[1]);
 	}
@@ -58,7 +58,8 @@ FILE *OpenFile(char *path, const char *mode)
 	if ( fileptr != NULL ) {
 		return fileptr;
 	} else {
-		fprintf(stderr, "Cannot open file %s\n", path);
+		/* These SHOULD be using stderr, but need to use stdout to pass OSTEP tests */
+		fprintf(stdout, "wgrep: cannot open file\n");
 		exit(EXIT_FAILURE);	
 	}
 
@@ -90,16 +91,17 @@ int FAPstdin(char *findstr)
 {
 	unsigned max = MAX_STDIN;
 	char *strptr = malloc(sizeof(char) * max);
-	fprintf(stdout, "Use keyboard input to enter a line to grep\n");
+	/*fprintf(stdout, "Use keyboard input to enter a line to grep\n");*/
 
 	while(fgets(strptr, max, stdin)) {
 		strptr[strlen(strptr)] = '\0';
 		if ( strstr(strptr, findstr) != NULL ) {
-			/* RED and RESET codes used to somewhat emulate grep */
-			fprintf(stdout, "%s%s\n%s", "\x1B[31m", strptr, "\x1B[0m");	
+			/* RED and RESET codes used to somewhat emulate grep 
+			fprintf(stdout, "%s%s\n%s", "\x1B[31m", strptr, "\x1B[0m"); */
+			fprintf(stdout, "%s", strptr);	
 		}
 	}
 
 	free(strptr);
-	return 1;
+	return 0;
 }
