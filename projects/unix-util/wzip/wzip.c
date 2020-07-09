@@ -15,13 +15,28 @@
 #include <string.h>
 #include <stdlib.h>
 #include "wzip.h"
-#define MAX_LEN 255
 
 int main(int argc, char **argv)
 {
-	FILE *fp = OpenFile("unencoded.txt", "r");
-	unsigned rtncode = EncodeFile(fp);
-	fclose(fp);
+	unsigned arg = 1;
+	unsigned rtncode = 0;
+
+	if ( argc < 2 ) {
+		fprintf(stdout, "wzip: incorrect number of arguments.\n");
+		exit(EXIT_FAILURE);
+	} 
+
+	for ( ; arg < argc ; arg++ ) {
+		FILE *fp = OpenFile(argv[arg], "r");
+		unsigned rtncode = EncodeFile(fp);
+		if ( rtncode != 0 ) {
+			fprintf(stdout, "wzip: error whilst parsing file %s\n", argv[arg]);
+			return 1;
+		}
+
+		fclose(fp);
+	}
+
 	return rtncode;
 }
 
@@ -38,35 +53,27 @@ FILE *OpenFile(char *path, const char *mode)
 
 }
 
-char *EncodeString(char *inpstr)
+int EncodeString(char *inpstr)
 {
+	const size_t max = MAXLEN;
+	const size_t bs = BYTESIZE;
 	unsigned o = 1; /* Occurances */
 	unsigned n = 0; /* Counter */
-	unsigned nadd = 0;
 	unsigned len = strlen(inpstr);
-	unsigned buffsize = 0;
 	char *buffer;
 	
-	if ( len <= MAX_LEN ) {
-		buffer = malloc(sizeof(char) * (len+1)); /* Maximum length required */
-	} else { 
-		fprintf(stdout, "Error [%d]: Line entered is too long (> %d)\n", __LINE__, MAX_LEN);
+	if ( len <= max ) {
+		buffer = malloc(bs+1); /* Maximum length required */
+	} else {
+		fprintf(stdout, "Error [%d]: Line entered is too long (> %lu)\n", __LINE__, max);
 		exit(EXIT_FAILURE);
 	}
 
 	for ( ; n < len ; n++ ) {
 		if ( n > 0 ) {
 			if ( inpstr[n-1] != inpstr[n] ) {
-				if ( o > 1 ) {
-					/* Log10 of n rounded down will give the number of digits -1 */
-					nadd = sizeof(char) * (floor(log10(o))+2);
-					snprintf(buffer+buffsize, nadd+1, "%d%c", o, inpstr[n-1]);
-				} else {
-					nadd = sizeof(char);
-					snprintf(buffer+buffsize, nadd+1, "%c", inpstr[n-1]);
-				}
-
-				buffsize += nadd;	
+				snprintf(buffer, bs+1, "%d%c", o, inpstr[n-1]);
+				fwrite(buffer, bs, 1, stdout);
 				o = 1;
 
 			} else {
@@ -75,24 +82,21 @@ char *EncodeString(char *inpstr)
 		}
 	}
 
-	return buffer;
+	fprintf(stdout, "\n");
+	free(buffer);
+	return 0;
 }
 
 int EncodeFile(FILE *fileptr) 
 {
-	char *lp = malloc(sizeof(char) * MAX_LEN);
-	FILE *nfileptr = OpenFile("encoded.txt", "wb");
-	char *buff;
-	size_t bwrite = sizeof(unsigned) + sizeof(char);
+	char *lp = malloc(sizeof(char) * MAXLEN);
 
-	while(fgets(lp, MAX_LEN, fileptr) != NULL) {
-		buff = EncodeString(lp);
-		fprintf(stdout, "%s\n%s\n", lp, buff);
-		fwrite(buff, bwrite, ceil(strlen(buff)/bwrite), nfileptr);
+	while(fgets(lp, MAXLEN, fileptr) != NULL) {
+		if ( EncodeString(lp) != 0 ) {
+			return 1;
+		}
 	}
 
-	fclose(nfileptr);
-	free(buff);
 	free(lp);
 	return 0;
 }
