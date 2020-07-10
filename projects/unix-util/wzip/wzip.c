@@ -11,6 +11,9 @@
 
 	10a4b
 */
+
+/* Use fwrite and fread exclusively to maintain correspondance between wzip and wunzip, redo wzip accordingly */
+
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -53,50 +56,40 @@ FILE *OpenFile(char *path, const char *mode)
 
 }
 
-int EncodeString(char *inpstr)
-{
-	const size_t max = MAXLEN;
-	const size_t bs = BYTESIZE;
-	unsigned o = 1; /* Occurances */
-	unsigned n = 0; /* Counter */
-	unsigned len = strlen(inpstr);
-	char *buffer;
-	
-	if ( len <= max ) {
-		buffer = malloc(bs+1); /* Maximum length required */
-	} else {
-		fprintf(stdout, "Error [%d]: Line entered is too long (> %lu)\n", __LINE__, max);
-		exit(EXIT_FAILURE);
-	}
-
-	for ( ; n < len ; n++ ) {
-		if ( n > 0 ) {
-			if ( inpstr[n-1] != inpstr[n] ) {
-				snprintf(buffer, bs+1, "%d%c", o, inpstr[n-1]);
-				fwrite(buffer, bs, 1, stdout);
-				o = 1;
-
-			} else {
-				o++;
-			}
-		}
-	}
-
-	fprintf(stdout, "\n");
-	free(buffer);
-	return 0;
-}
-
 int EncodeFile(FILE *fileptr) 
 {
-	char *lp = malloc(sizeof(char) * MAXLEN);
+	char *c = malloc(sizeof(char));
+	char *chunk = malloc(BYTESIZE);
+	char prev = 0;
+	unsigned read = 0;
+	unsigned occur = 0;
 
-	while(fgets(lp, MAXLEN, fileptr) != NULL) {
+	/* fread is required to both zip and unzip the file as it keeps characters like newlines intact
+	   - using a combination of fgets and fwrite caused issues. */
+	while((read = fread(c, sizeof(char), 1, fileptr)) == 1) {
+		if ( *c == prev ) {
+			occur++;
+		} else if ( occur > 0 ) {
+			snprintf(chunk, BYTESIZE, "%d%c", occur, prev);
+			fwrite(chunk, BYTESIZE, 1, stdout);
+			occur = 1;
+		} else { occur = 1; }
+
+		prev = *c;	
+	}
+
+	free(chunk);
+	free(c);
+	return read;
+
+	/*
+	char *lp = malloc(sizeof(char) * MAXLEN);
+	   while(fgets(lp, MAXLEN, fileptr) != NULL) {
 		if ( EncodeString(lp) != 0 ) {
 			return 1;
 		}
 	}
-
 	free(lp);
-	return 0;
+	*/
+
 }
