@@ -5,7 +5,8 @@
 #define BYTESIZE 5
 
 FILE *OpenFile(char*, const char*);
-int EncodeFile(FILE*);
+int EncodeFile(int, char**);
+void EncodeString(char*, char, unsigned);
 int DecodeString(char*);
 int DecodeFile(FILE*);
 

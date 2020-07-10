@@ -22,14 +22,25 @@
 
 int main(int argc, char **argv)
 {
+	unsigned arg = 1;
 	unsigned rtncode = 0;
 
 	if ( argc < 2 ) {
-		fprintf(stdout, "wzip: file1 [file2 ...]\n");
+		fprintf(stdout, "wzip: incorrect number of arguments.\n");
 		exit(EXIT_FAILURE);
 	} 
 
-	rtncode = EncodeFile(argc, argv);
+	for ( ; arg < argc ; arg++ ) {
+		FILE *fp = OpenFile(argv[arg], "r");
+		unsigned rtncode = EncodeFile(fp);
+		if ( rtncode != 0 ) {
+			fprintf(stdout, "wzip: error whilst parsing file %s\n", argv[arg]);
+			return 1;
+		}
+
+		fclose(fp);
+	}
+
 	return rtncode;
 }
 
@@ -46,54 +57,35 @@ FILE *OpenFile(char *path, const char *mode)
 
 }
 
-int EncodeFile(int argc, char **argv) 
+int EncodeFile(FILE *fileptr) 
 {
-	FILE *fp = NULL;
-	int nl = 0;
-	unsigned arg = 1;
 	char *c = malloc(sizeof(char));
 	char *chunk = calloc(1, BYTESIZE);
 	char prev = 0;
 	unsigned read = 0;
-	unsigned occur = 1;
-	
-	for ( ; arg < argc; arg++ ) {
-		fp = OpenFile(argv[arg], "rb"); 
-		/* fread is required to both zip and unzip the file as it keeps characters like newlines intact
-		- using a combination of fgets and fwrite caused issues. */
-		while((read = fread(c, sizeof(char), 1, fp)) == 1) {
-			if ( *c == prev ) {
-				occur++;
-			} else if ( prev != '\0' && *c != '\n') {
-				EncodeString(chunk, prev, occur);
-				occur = 1;
-				if ( nl != 0 ) {
-					EncodeString(chunk, '\n', nl);
-					nl = 0;
-				}
+	unsigned occur = 0;
 
-			}
-			
-			if ( *c == '\n' ) {
-				nl++;
-			} else {
-				prev = *c;
-			}
-			
-		}
-			
+	/* fread is required to both zip and unzip the file as it keeps characters like newlines intact
+	   - using a combination of fgets and fwrite caused issues. */
+	while((read = fread(c, sizeof(char), 1, fileptr)) == 1) {
+		if ( *c == prev ) {
+			occur++;
+		} else if ( occur > 0 ) {
+			EncodeString(chunk, prev, occur);
+			occur = 1;
+		} else { occur = 1; }
+
+		prev = *c;	
 	}
 
-	fclose(fp);
-		
-	if ( occur > 1 || nl != 0) { 
+	/* TODO: Compress multiple files into one stream */
+
+	if ( chunk[0] == 0 ) { 
 		EncodeString(chunk, prev, occur);
 	}
-	
-	EncodeString(chunk, '\n', 1);
-	
+
+	free(chunk);
 	free(c);
-	free(chunk);	
 	return read;
 
 	/*
@@ -110,8 +102,9 @@ int EncodeFile(int argc, char **argv)
 
 void EncodeString(char *buffer, char c, unsigned o)
 {
-	snprintf(buffer, BYTESIZE, "%d%c", o, c);
-	fwrite(&o, BYTESIZE-1, 1, stdout);
+	fwrite(&o, sizeof(unsigned), 1, stdout);
 	fwrite(&c, sizeof(char), 1, stdout);
 	// Below method does not pass test suite due to byte orientation required. 
+	//snprintf(buffer, BYTESIZE, "%d%c", o, c);
+	//fwrite(buffer, BYTESIZE, 1, stdout);	
 }
