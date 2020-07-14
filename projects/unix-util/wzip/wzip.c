@@ -65,6 +65,7 @@ int EncodeFile(int argc, char **argv)
 			if ( *c == prev ) {
 				occur++;
 			} else if ( prev != '\0' && *c != '\n') {
+				//printf("\nOccur: %d, Char: %c - %c\n", occur, *c, prev);
 				EncodeString(chunk, prev, occur);
 				occur = 1;
 				if ( nl != 0 ) {
@@ -79,19 +80,20 @@ int EncodeFile(int argc, char **argv)
 			} else {
 				prev = *c;
 			}
-			
+
 		}
 			
 	}
 
 	fclose(fp);
 		
-	if ( occur > 1 || nl != 0) { 
+	if ( occur > 0 ) { 
 		EncodeString(chunk, prev, occur);
 	}
 	
-	EncodeString(chunk, '\n', 1);
-	
+	if ( *c == '\n') { 
+		EncodeString(chunk, '\n', 1);
+	}
 	free(c);
 	free(chunk);	
 	return read;
@@ -113,5 +115,5 @@ void EncodeString(char *buffer, char c, unsigned o)
 	snprintf(buffer, BYTESIZE, "%d%c", o, c);
 	fwrite(&o, BYTESIZE-1, 1, stdout);
 	fwrite(&c, sizeof(char), 1, stdout);
-	// Below method does not pass test suite due to byte orientation required. 
+	//fprintf(stdout, "%d%c", o, c);
 }
