@@ -18,7 +18,28 @@ e.g. `execvp("ls", {"ls", "-a", NULL})`;
 * Unix is the best thing in the world, even better than ice cream.
 
 ### Chapter 5 Homework Notes:
+#### Q1:
+* _x_ will be the same value in each process if it is not changed within the process. 
+* _x_ will be equal to the value set within the process (e.g. if _x_ is set to 50 in the child process and 100 in the parent process it is only equal to this value within that process).
+* As above, if _x_ is set within a process and is referenced in another (without having its value changed) it will equal the value initially set in the main block (e.g. `x = 0 in main(), x is set to 100 in parent process, x = 0 in child process`). 
+* Unlike multi-threaded code, referencing the same variable within multiple process does not cause concurrency errors (e.g. race conditions). 
 
+#### Q2:
+* Both the parent and child may access an open file descriptor, it is _NOT_ required that the file is reopened with freopen or closed and opened before using it in a different process.
+* If the file isopen using write mode (e.g. `fopen("file", "w")` ) rather than append (e.g. `fopen("file", "a")` ), the contents written by one process will be overwritten by the other.
+* The file cannot be written to _concurrently_ as with multi-threaded code as one process runs before the other as discussed in the notes for the chapter.
+
+#### Q3:
+* Ensuring the child prints first IS possible without wait but is probably not advised. The method for doing this is outlined in the q3 program - a SIGSTOP signal is sent via `kill()` and a SIGCONT signal is sent once the child process has finished printing. This could also be done using the sigaction struct and/or signal function call.
+
+#### Q4:
+* Exec() is split into a wide family of variants, which are libc wrapped built upon the same `exec()` base. However, instead of having a single function that serves each purpose: e.g. ability to use a path or static filename; An input list or array, the variants each used specifically. The real reason the multiple variants is their development over a stretch of time - allowing programs to remain backwards compatible by retaining the functionality of (for example: execv) whilst adding new variants to fill a niche [9].
+
+#### Q5:
+* The `wait()` system call does nothing when executed in the child process. It will return the child process id when used within the parent process. 
+
+#### Q6: 
+* `waitpid()` and `wait()` do similar things, they are, infact, identical when used in the manner shown in the q6 example code (using WUNTRACED and the child pid). However, `waitpid()` provides additional functionality such as running without blocking [10].
 
 Sources:
 [1] Waitpid(2) manual: https://linux.die.net/man/2/waitpid
@@ -36,3 +57,7 @@ Sources:
 [7] Linux Programmer's Guide (Chapter 6) by Burkett: https://tldp.org/LDP/lpg/node11.html
 
 [8] Sigaction function example (GNU.org): https://www.gnu.org/software/libc/manual/html_node/Sigaction-Function-Example.html
+
+[9] Knome on exec(): https://www.reddit.com/r/osdev/comments/ai71o0/ask_why_so_many_variants_of_exec_call/
+
+[10] Wait vs. Waitpid: https://stackoverflow.com/questions/40014963/about-wait-and-waitpid
