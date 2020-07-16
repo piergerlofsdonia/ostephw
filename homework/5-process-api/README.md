@@ -41,6 +41,12 @@ e.g. `execvp("ls", {"ls", "-a", NULL})`;
 #### Q6: 
 * `waitpid()` and `wait()` do similar things, they are, infact, identical when used in the manner shown in the q6 example code (using WUNTRACED and the child pid). However, `waitpid()` provides additional functionality such as running without blocking [10].
 
+#### Q7:
+* If you close the standard output, `close(STDOUT_FILENO)`, no output can be written by the child process using `printf`. No error results from this, however.
+
+#### Q8:
+* Pipes between processes are pretty simple when executing programs within the process (e.g, see q8/childpipe.c), it's also pretty simple when piping between a parent and the child (e.g. see q8/parentpipe.c)[see: 11, 12]. Primarily this is done through casting the standard output to a pipe-end using `dup2(old_fd, new_fd);`, but buffering and writing the data across the pipe works just as well, depending on the required use of the pipe (e.g. `write(fd[1], buff, buffsize); -> read(fd[0], readbuff, buffsize);`).
+
 Sources:
 [1] Waitpid(2) manual: https://linux.die.net/man/2/waitpid
 
@@ -61,3 +67,7 @@ Sources:
 [9] Knome on exec(): https://www.reddit.com/r/osdev/comments/ai71o0/ask_why_so_many_variants_of_exec_call/
 
 [10] Wait vs. Waitpid: https://stackoverflow.com/questions/40014963/about-wait-and-waitpid
+
+[11] C Tutorial: Pipes: https://www.cs.rutgers.edu/~pxk/416/notes/c-tutorials/pipe.html.
+
+[12] Creating Pipes in C: https://tldp.org/LDP/lpg/node11.html
