@@ -19,6 +19,10 @@
 * Context switching is a very fast process, taking less than a microsecond in modern operating systems, on modern hardware. 
 * Concurrent system calls & traps are possible due to modern operating systems implementing locking schemes (low-level mutexes) that stop internal structures from being altered by multiple system calls, or by temporarily halting interrupts whilst a high-importance interrupt handler is executing.
 * Limited direct execution is a method of _baby-proofing_ the CPU so that a process may not do anything idiotic with it - if it does, the operating system can step in and handle bad requests (system calls).  
+#### Homework notes:
+* gettimeofday() is borderline useless for measuring the speed of system calls.
+
+
 #### Sources:
 
 [1] Interrupt Driven I/O: http://inputoutput5822.weebly.com/interrupt-driven-io.html
