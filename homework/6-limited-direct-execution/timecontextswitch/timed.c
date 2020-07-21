@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sched.h>
-#include "rdtsc.h"
 
 #define	CYCLES 250000
 
