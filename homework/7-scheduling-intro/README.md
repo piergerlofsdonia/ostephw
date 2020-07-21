@@ -36,9 +36,22 @@ how jobs arrive in the real world. Latency is expected, that is, a group of jobs
 ##### Round robin:
 * _RR_ (round robin) - also called _time slicing_ - is a scheduling algorithm that favours response time over minimum turnaround time. Jobs are handled differently than the previous algorithms, running each job partially (in a _slice_ called a _scheduling quantum_) before switching to the next job in the queue, repeating this process until each job is finished.
 * The time period that the partial job (_slice_) runs for is determined by the timer-interrupt period discussed in the previous chapter where the run period of the slice must be a multiple of this timer-interrupt period (e.g. a timer-interrupt period of 5ms would allow slices of 5ms, 10ms, 15ms, etc...).
-* Determining this run period is a balancing act, make the window too short and context switching becomes a costly part of the entire job run, make the window too long and response time is reduced. Determining this value and the associated trade-off is the act of _amortizing_ the cost of the round-robin scheduler (e.g. reducing the number of slices required to complete a task reduces the total _wasted_ time spent context switching).
+* Determining this run period is a balancing act, make the window too short and context switching becomes a costly part of the entire job run, make the window too long and response time is reduced. Determining this value and the associated trade-off is the act of _amortizing_ the cost of the round-robin scheduler (e.g. reducing the number of slices required to complete a task reduces the total _wasted_ time spent context switching. Note that the actual context switch is not what causes this, given the timed example from last chapter - rather saving, clearing, and restoring CPU caches and on-chip hardware is what consitutes the majority of this wasted time).
+* Round-robin variants such as QFQ+ (Quick-Fair-Queuing-Plus) and CFS (Completely Fair Scheduler) use round robin on-top of a system to split processing time among processes (_fairness_) which, as seen below (normal _RR_ versus previously discussed _PSJF/STCF_) produces _worse_ turnaround times (avg.) than any other scheduling method discussed. As is core with scheduling algorithms, trade-offs are made; Turnaround is sacrificed for response time, and subsequently response time is sacrificed for fairness which in turn actually improves turnaround time.  
 
 ![](img/jobsched3.png)
+
+##### Scheduling with I/O:
+* I/O is integral to any program but causes a problem that the operating system must solve during the scheduling routines: When a call for I/O is enacted, the current process (that which is accessing I/O, whether it be a slow call to disk or a faster call to a L3 cache) will be blocked. The scheduler can then move to another task, and return to the task when it becomes unblocked - if it is efficient to do so. This is shown in the example below where job _A_ (green) initiates an I/O (e.g. read from disk) call and becomes blocked. Whilst it is blocked, it may not run any additional instructions, so the OS swaps to process _B_ (blue) for that period of time (or longer) and returns to job _A_ when it is no longer blocked, restarting the round-robin process. This is _overlap_.
+
+<center>![](img/jobsched4.png)</center>
+
+##### Feedback:
+
+* One outstanding issue that has not been addressed is the idea that we can easily predict the job length of each incoming task, thus making it easy to sort and handle tasks in the ways described above. This, however, is not quite the truth - operating systems do not have prior knowledge of job length when a job is received, rather is uses prior information to inform the most likely outcome for subsequent jobs - a feedback system called a _multi-level feedback queue_. This is discussed in the next chapter (8).
+
+... _You can't avere la botte piena e la moglie ubriaca._
+
 
 #### Sources:
 
