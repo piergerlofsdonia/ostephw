@@ -21,7 +21,9 @@
 * Limited direct execution is a method of _baby-proofing_ the CPU so that a process may not do anything idiotic with it - if it does, the operating system can step in and handle bad requests (system calls).  
 #### Homework notes:
 * gettimeofday() is borderline useless for measuring the speed of system calls.
-
+* clock_gettime can be used to measure time periods of nanoseconds, which is perfect for this. There's also the option of using rdtsc (and rdtscp for a seralised version) - see rdtsc.h for more information surrounding that.
+* The general gist is that rdtsc can be useful but requires a lot of CPU information to use correctly (e.g. maximum clock frequency to convert rdtsc units to seconds), it also requires serialisation to correctly clock as the CPU may change the order of instructions so that the timer does not actually take a sample at the correct (or perceived) period in time.
+* When timing a context switch, some OS-level functionality is required. Two pipes (parent I/O and child I/O) can be used to connect the parent and child process. `Read()` and `Write()` used within the process (which reads/writes to the correct pipe fd) will cause the current process to be blocked whilst awaiting communication - this is the technique used in `timecontextswitch`. The code example provided will accurately time context switches to ~2.2-2.5us (this figure is also noted by [Eli Bendersky](https://eli.thegreenplace.net/2018/measuring-context-switching-and-memory-overheads-for-linux-threads/)) over ~250k cycles, reducing the number of cycles increases this average time signficantly (e.g. run the program at ~50 cycles and the output will be ~4.5us).
 
 #### Sources:
 
