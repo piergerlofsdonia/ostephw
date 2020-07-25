@@ -52,6 +52,7 @@ how jobs arrive in the real world. Latency is expected, that is, a group of jobs
 
 ... _You can't avere la botte piena e la moglie ubriaca._
 
+__See: Simulation folder for homework answers, go to [the ostep homework repo](https://github.com/remzi-arpacidusseau/ostep-homework/tree/master/cpu-sched) to get the scheduler.py script.__
 
 #### Sources:
 
