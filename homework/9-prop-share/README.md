@@ -1,0 +1,10 @@
+#### Chapter 9 Notes:
+##### Summary:
+* As noted in the previous section, whilst discussing the _multi-level feedback queue_ scheduler, optimising for turnaround or response-rate can negatively affect _fairness_ - some long jobs can get stuck in the lowest priority queue awaiting a priority boost in order to continue. However, other approached, such has the _proportional-share_ implementation, focus on dividing computation time between processes fairly.
+* One method of implementing this approach is to use a _lottery system_ in which CPU time is distributed by ticketing each process and then drawing a winning process. This allows for a system where multiple jobs have a difference chance of being run dependent on how many _tickets_ they are assigned (e.g. job A has 75 tickets, B has 25, A should have a 75% chance of getting prioritised)<sub>[1]</sub>.
+* Running with the analogy of tickets as a resource for schedulers, processes (such as a client/server application with multiple processes) can use its current weighting in tickets to improve the chances of a child/partner process of being scheduled - _ticket transfer_. In a closed system where the processes acknowledge each-other as safe, a scheduling implementation may increase its ticket-count in order to signal to the operating system that it is running something of high-importance and have a better chance of being scheduled.
+* 
+
+##### Footnotes:
+
+[1] _Tickets_, in this case, just represent the idea of weighting. You could replace the word _ticket_ with whatever you like, as long as its still known that the job with the most foobazes, chunks, or pints is most-likely to be chosen to be run in a _lottery-type_ scheduling draw. The idea of _tickets_, in fact, is commonly used in prioritising processes between users in a multi-user system (e.g. user A and B both have 50 tickets and can use them to have their applications run, but once they have assigned so-many tickets to processes, they will run out of tickets and the operating system knows that they are hogging the CPU and may then distribute CPU time to other users accordingly).
