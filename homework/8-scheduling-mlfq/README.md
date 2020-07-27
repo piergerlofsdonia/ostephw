@@ -21,6 +21,30 @@
 
 <center>![](img/jobsched8.png)</center>
 
+##### Homework notes:
+
+__Q2:__ Examples:
+
+1. _Long running job over time:_ `prompt>./mlfq.py -l 0,200,0 -q 10 -B 0 -c`
+2. _One long job, one short job:_ `prompt>./mlfq.py -l 0,200,0:100,20,0 -q 10, -B 0 -c`
+3. _One I/O intensive, one CPU intensive job_: `prompt>./mlfq.py -l 0,200,0:50,15,1 -q 10 -B 0 -i 10 -c` (replacing or removing _-i_ value will change the interval, this just looked correct when comparing output to the graphed example).
+4. _With and without boost:_ `prompt>./mlfq.py -l 0,100,0:100,100,5 -q 10 -B 0 -i 5 -c` (without)  
+`prompt>./mlfq.py -l 0,100,0:100,100,5 -q 10 -B 50 -i 5 -c` (with)
+5. _With and without gaming tolerance:_ `prompt>./mlfq.py -l 0,250,0:75,100,9 -q 10 -B 0 -i 1 -S -c` (without)
+`prompt>./mlfq.py -l 0,250,0:75,100,9 -q 10 -B 0 -i 1 -c` (with)
+6. _Lower priority, lower quanta:_ `prompt>./mlfq.py -l 0,140,0:0,140:0 -Q 10,20,40 -B 0 -c`
+
+__Q3:__ Emulate Round-Robin: 
+
+* Set the simulation program to use one queue for multiple tasks and set its quantum length to a static value, e.g. `prompt>./mlfq.py -l 0,140,0:0,140,0 -Q 1 -B 0 -c`
+
+__Q4:__ Gaming the system:
+
+* See example 5 above (without): `prompt>./mlfq.py -l 0,100,0:5,100,9 -q 10 -B 0 -i 1 -S -c`
+
+__Q5:__ Answer: `50ms`
+
+__Q6:__ In the provided python script (simulator) the -I flag forces the job completing its I/O to be run _first_ proceeding any job that was currently in progress (e.g. job B is running and starts an I/O call, blocking job B so job A will run. When job B is finished with its blocking call, job B will run if -I is set, job A will run if -I is not set.)
 ##### Footnotes:
 
 [1]: The _Multics_ operating system (and with it, the influential _CTSS_) was technologically influential but also paved the way for the ITS (Incompatible Time-Sharing System) and UNIX, both of which were named as a tongue-in-cheek reference to the CTSS and Multics projects.
