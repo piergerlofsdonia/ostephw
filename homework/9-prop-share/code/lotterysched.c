@@ -8,7 +8,7 @@
 
 typedef struct p {
 	unsigned pid;
-	int nice;
+	int nicerating;
 	struct p *next;
 } l_process;
 
@@ -44,9 +44,9 @@ void ParseProcesses(l_process *head)
 			if ( pid > 0 ) 
 			{
 				current->pid = pid;
-				current->nice = getpriority(PRIO_PROCESS, pid);	
+				current->nicerating = getpriority(PRIO_PROCESS, pid);	
 				if ( current->next == NULL ) { current->next = (l_process *) Ecmalloc(sizeof(l_process)); }
-				printf("%i [%u]\n", current->nice, current->pid);
+				printf("%i [%u]\n", current->nicerating, current->pid);
 				current = current->next;
 			}
 			count++;
