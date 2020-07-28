@@ -5,30 +5,37 @@
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <time.h>
 
 typedef struct p {
 	unsigned pid;
 	int nicerating;
+	unsigned tickets;
 	struct p *next;
 } l_process;
 
 void *Ecmalloc(size_t);
-void ParseProcesses(l_process*);
+unsigned long long ParseProcesses(l_process*);
+int DrawWinner(l_process*, unsigned long long);
 
 int main(int argc, char **argv)
 {
+	unsigned long long max_tickets;
 	l_process *plist;
 	plist = (l_process *) Ecmalloc(sizeof(l_process));
-	ParseProcesses(plist);
-	free(plist);	
+	max_tickets = ParseProcesses(plist);
+	
+	printf("Winning process: %d \n", DrawWinner(plist, max_tickets));
+	free(plist);
 }
 
-void ParseProcesses(l_process *head) 
+unsigned long long ParseProcesses(l_process *head) 
 {
 	unsigned count = 0;
 	DIR *dirp;
 	struct dirent *entry;
 	unsigned long pid;
+	unsigned long long ticketcount = 0;
 
 	l_process *current = head;
 	dirp = opendir("/proc/");
@@ -45,14 +52,17 @@ void ParseProcesses(l_process *head)
 			{
 				current->pid = pid;
 				current->nicerating = getpriority(PRIO_PROCESS, pid);	
+				current->tickets = rand() % 100;
+				ticketcount += current->tickets;
 				if ( current->next == NULL ) { current->next = (l_process *) Ecmalloc(sizeof(l_process)); }
-				printf("%i [%u]\n", current->nicerating, current->pid);
 				current = current->next;
 			}
 			count++;
 		}
 		printf("Parsed directory /proc/ [%u files]\n", count);
 	}
+
+	return ticketcount;
 }
 
 void *Ecmalloc(size_t nbytes) 
@@ -67,6 +77,28 @@ void *Ecmalloc(size_t nbytes)
 	return allocated;
 }
 
+int DrawWinner(l_process *head, unsigned long long max_tickets)
+{
+	/* Randomise winner */
+	srand(time(NULL) * clock() / getpid());
+	l_process *current = head;
+	unsigned long long winner = rand() % max_tickets;
+	unsigned long long tickcount = 0;
+
+	printf("Finding ticket holder: %llu\n", winner);
+
+	while(tickcount < winner) 
+	{
+		tickcount += current->tickets;
+		current = current->next;
+	}
+
+	return current->pid;
+}
+
+
 /* TODO:
 	* Assign tickets to each process based upon max_ticket count and weighting formula (probably based upon niceness?)
+	* Add checking to DrawWinner
+	* Add sort before DrawWinner to sort list into order of most tickets (descending)./
 */
