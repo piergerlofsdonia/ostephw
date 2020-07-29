@@ -1,3 +1,6 @@
+#include "btree.h" /* Binary search tree functions */
+
+
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,37 +10,32 @@
 #include <unistd.h>
 #include <time.h>
 
-typedef struct p {
-	unsigned pid;
-	int nicerating;
-	unsigned tickets;
-	struct p *next;
-} l_process;
-
-void *Ecmalloc(size_t);
-unsigned long long ParseProcesses(l_process*);
-int DrawWinner(l_process*, unsigned long long);
+process_node *ParseProcesses();
+int DrawWinner(process_node*, unsigned long long);
+unsigned long AssignTickets(process_node *);
 
 int main(int argc, char **argv)
 {
-	unsigned long long max_tickets;
-	l_process *plist;
-	plist = (l_process *) Ecmalloc(sizeof(l_process));
-	max_tickets = ParseProcesses(plist);
+	unsigned long max_tickets;
+	process_node *plist = NULL;
 	
-	printf("Winning process: %d \n", DrawWinner(plist, max_tickets));
+	plist = ParseProcesses();
+	max_tickets = AssignTickets(plist);
+	printTree(plist, 0);
+	printf("\n%lu\n", max_tickets);
 	free(plist);
 }
 
-unsigned long long ParseProcesses(l_process *head) 
+process_node *ParseProcesses() 
 {
 	unsigned count = 0;
 	DIR *dirp;
 	struct dirent *entry;
-	unsigned long pid;
-	unsigned long long ticketcount = 0;
+	int pid = 0;
+	int *pids = (int *) ecmalloc(sizeof(int));
+	int *nices = (int *) ecmalloc(sizeof(int));
+	process_node *root = NULL;
 
-	l_process *current = head;
 	dirp = opendir("/proc/");
 	
 	if ( dirp == NULL ) 
@@ -48,40 +46,28 @@ unsigned long long ParseProcesses(l_process *head)
 		while((entry = readdir(dirp)) != NULL)
 		{
 			pid = atoi(entry->d_name);
+			
 			if ( pid > 0 ) 
 			{
-				current->pid = pid;
-				current->nicerating = getpriority(PRIO_PROCESS, pid);	
-				current->tickets = rand() % 100;
-				ticketcount += current->tickets;
-				if ( current->next == NULL ) { current->next = (l_process *) Ecmalloc(sizeof(l_process)); }
-				current = current->next;
+				pids[count] = pid;
+				nices[count] = getpriority(PRIO_PROCESS, pid);
+				count++;
+				pids = realloc(pids, sizeof(int) * (count+1));
+				nices = realloc(nices, sizeof(int) * (count+1));
 			}
-			count++;
 		}
 		printf("Parsed directory /proc/ [%u files]\n", count);
 	}
 
-	return ticketcount;
+	root = createTree(pids, nices, 0, count);
+	return root;
 }
 
-void *Ecmalloc(size_t nbytes) 
-{
-	void *allocated = malloc(nbytes);
-	if ( allocated == NULL ) 
-	{
-		fprintf(stderr, "Error whilst allocating %lu bytes at %p\n", nbytes, allocated);
-		exit(1);
-	} 
-	
-	return allocated;
-}
-
-int DrawWinner(l_process *head, unsigned long long max_tickets)
+int DrawWinner(process_node *head, unsigned long long max_tickets)
 {
 	/* Randomise winner */
 	srand(time(NULL) * clock() / getpid());
-	l_process *current = head;
+	process_node *current = head;
 	unsigned long long winner = rand() % max_tickets;
 	unsigned long long tickcount = 0;
 
@@ -90,12 +76,35 @@ int DrawWinner(l_process *head, unsigned long long max_tickets)
 	while(tickcount < winner) 
 	{
 		tickcount += current->tickets;
-		current = current->next;
+		/* Traverse tree rather than list */
 	}
 
 	return current->pid;
 }
 
+unsigned long AssignTickets(process_node *head)
+{
+	if ( head == NULL ) return 0;
+
+	unsigned long tickets = 0;
+	unsigned utick = 0;
+	float ftick = 50.0;
+
+	if ( head->nicerating == 0 ) 
+	{
+		utick = ftick;
+	} else
+   	{
+		ftick = ftick - ( head->nicerating * 2.5);	
+		utick = ftick;
+	}
+	
+	head->tickets = utick;
+	tickets += utick;
+	tickets += AssignTickets(head->left);
+	tickets += AssignTickets(head->right);
+	return tickets;
+}
 
 /* TODO:
 	* Assign tickets to each process based upon max_ticket count and weighting formula (probably based upon niceness?)
