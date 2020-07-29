@@ -32,7 +32,89 @@ static const int prio_to_weight[40] = {
 _`vruntime`<sub>i</sub> = `vruntime`<sub>i</sub> + <sup>weight<sub>0</sub></sup>/<sub>weight<sub>i</sub></sub> * runtime<sub>i</sub>_ </center>
 
 * CFS uses a data structure called the _red-black tree_, which enables its efficiency and scalability. A linked-list data structure such as that outlined in `code/lotterysched.c` does not scale very well due to the need to traverse it linearly, this is especially true when the number of processes increases and the scheduling interval decreases (to a number of milliseconds)<sub>[5]</sub>. The _red-black tree_ structure allows CFS to be so efficient and fast due to being _balanced_ (assuring no side of the tree is more than twice as long as the other keeps depth shallow when tree is modified), it does this by storing an extra bit per node (colour). 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+* CFS holds all _running_ and _runnable_ process in this tree and removes and re-inserts (upon wake) sleeping/blocked tasks - setting their `vruntime` to the minimum value in the tree.
+* Whilst CFS and fair-share schedulers are useful and, as such, are widely used, they are not perfect and suffer from a number of problems: they have a tendency to favour non-I/O tasks, and they leave a large part of the implementation unknown - how many tickets do you allocate, how is niceness decided by default, etc.
+* As a side-note to the above point, scheduling is not a _solved_ science as maintained by Torvalds and many other figures in the 2000's, multi-core processing highlighted flaws in the Linux system, as highlighted in Lozi et al., 2016<sub>[6]</sub>.
+
+##### Homework notes:
+
+* __Q1:__ 
+
+``` 
+Seed: 1
+Job A: Length (1) Tickets (84)
+Job B: Length (7) Tickets (25)
+Job C: Length (4) Tickets (44)
+	
+	| | | | | | | | | |
+	C A B C C B B B B B
+
+Seed: 2
+Job A: Length (9) Tickets (94)
+Job B: Length (8) Tickets (73)
+Job C: Length (6) Tickets (30)
+
+	| | | | | | | | | | | | | | | | | | | | | | | 
+	C A A C A B A C A A A B A A B C B B B C B B C
+	
+Seed: 3
+Job A: Length (2) Tickets (54)
+Job B: Length (3) Tickets (60)
+Job C: Length (6) Tickets (6)
+
+	| | | | | | | | | | | 
+	B B A B A C C C C C C
+```
+
+* __Q2__: 
+
+``` 
+Job A: Length (10) Tickets (1)
+Job B: Length (10) Tickets (100)
+
+	| | | | | | | | | | | | | | | | | | | |
+	A A A A A A A A A A B B B B B B B B B B
+```
+
+Job A has a <1% of running before Job B - this kind of imbalance in tickets forces a priority job to completion before another job can be scheduled.
+
+* __Q3__:
+
+Fairness for a scheduling run of two jobs of equal length (100) with the same ticket value (100).
+
+Unfairness for seed (1): 196/200 = 0.98
+
+Unfairness for seed (2): 190/200 = 0.95
+
+Unfairness for seed (3): 196/200 = 0.98
+
+Unfairness for seed (4): 199/200 = 1.00
+
+Unfairness for seed (5): 181/200 = 0.95
+
+" " seed (6): 193/200 = 0.97
+
+" " seed (7): 185/200 = 0.93
+
+" " seed (8) : 191/200 = 0.96
+
+" " seed (9): 192/200 = 0.96
+
+" " seed (10): 197/200 = 0.99
+
+Average: 0.967
+
+* __Q4__:
+
+_Fairness_ decreases as quantum length increases up to a maximum of 0.5 at _q_ = 100 (job A runs for 100ms then job B runs for 100ms = (100/200) = 0.5)
+
+* __Q5__:
+
+[xxyzz did a great job of this here](https://github.com/xxyzz/ostep-hw/tree/master/9).
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
 ##### Footnotes:
 
 [1] _Tickets_, in this case, just represent the idea of weighting. You could replace the word _ticket_ with whatever you like, as long as its still known that the job with the most foobazes, chunks, or pints is most-likely to be chosen to be run in a _lottery-type_ scheduling draw. The idea of _tickets_, in fact, is commonly used in prioritising processes between users in a multi-user system (e.g. user A and B both have 50 tickets and can use them to have their applications run, but once they have assigned so-many tickets to processes, they will run out of tickets and the operating system knows that they are hogging the CPU and may then distribute CPU time to other users accordingly).
@@ -48,3 +130,5 @@ _`vruntime`<sub>i</sub> = `vruntime`<sub>i</sub> + <sup>weight<sub>0</sub></sup>
 * As noted in _OSTEP_, these weighting calculations with differing niceness ratings can produce the same outcomes, e.g. _A_ [-5] vs. _B_ [0] and _C_ [5] vs. _D_ [10] both produce time-slices of 36ms.
 
 [5] Removing a value and entering it back into a list in order requires searching through the list to find the correct point at which to insert it, this is an _O(n)_ operation, the same operation using a red-black tree is _O(log n)_ which is noticeably more efficient when approaching _n > 1000_.
+
+[6] tl;dr: The general summary of the paper is that for modern applications the scheduler has become too complex and feature-heavy leading to bugs relating to the scheduling of threads, highlighting four bugs that caused a ~13-24% reduction in performance metrics. The actual cause of the bugs, in this context, is not important but the outcome was always the same: cores remained idle whilst runnable threads awaited scheduling in the run queue. An interesting side-note on this paper is the highlighting of how important it is for developers to have time to build tools to better debug and test their code - finding these kinds of kernel-level bugs is difficult and often requires proprietary solutions.
