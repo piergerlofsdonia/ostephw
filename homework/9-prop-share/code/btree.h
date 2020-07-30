@@ -14,7 +14,9 @@ typedef struct node {
 
 void *ecmalloc(size_t);
 process_node *makeNode(int, int);
+process_node *minimum(process_node*);
 process_node *insert(process_node*, int, int);
+process_node *_delete(process_node*, int);
 void padTree(int);
 void printTree(process_node*, int);
 process_node *createTree(int[], int[], int, int);
@@ -56,6 +58,51 @@ process_node *insert(process_node* node, int pid, int nice)
 	return node;
 }
 
+process_node *_delete(process_node *n, int pid)
+{
+	/* Delete a node using basic bst removal process dictated by the number of nodes below the deleted node:
+	   0. Remove the node, no other changes are required.
+	   1. Take the pid value of the sole child and replace the deleted node with it.
+	   2. Search for the lowest right-hand value below the removed node, that node replaces the removed node.
+	   3. Something has gone dreadfully, terribly wrong.
+	*/
+
+	if ( n == NULL ) return NULL;
+	
+	process_node *current = NULL;
+
+	if ( pid < n->pid ) n->left = _delete(n->left, pid);
+	else if ( pid > n->pid ) n->right = _delete(n->right, pid);
+	else 
+	{
+		/* Check number of children on the node to delete. */
+		if ( n->left != NULL && n->right != NULL )
+		{
+			current = minimum(n->right);
+			n->pid = current->pid;
+			n->right = _delete(n->right, current->pid);	
+		} else if (n->left != NULL || n->right != NULL ) 
+		{
+			current = (n->left == NULL) ? n->right : n->left;
+			free(n);
+			return current;
+		} else 
+		{
+			free(n);
+			return NULL;
+		}
+	}
+
+	return n;
+}
+
+process_node *minimum(process_node *n)
+{
+	if ( n == NULL ) return NULL;
+	else if (n->left != NULL ) return minimum(n->left);
+	return n;
+}
+
 void padTree(int padding)
 {
 	for ( int i = 0; i < padding; i++ ) 
@@ -85,8 +132,8 @@ process_node *createTree(int pids[], int nices[], int start, int end)
 	process_node *root = NULL;
 	if ( start > end ) return NULL;
 	mid = start + (end-start) / 2;
-	
-	root = insert(root, pids[mid], nices[mid]);	
+
+	root = insert(root, pids[mid], nices[mid]);
 	root->left = createTree(pids, nices, start, mid-1);
 	root->right = createTree(pids, nices, mid+1, end);
 	return root;

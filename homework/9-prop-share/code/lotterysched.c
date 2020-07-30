@@ -1,6 +1,5 @@
 #include "btree.h" /* Binary search tree functions */
 
-
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,19 +10,73 @@
 #include <time.h>
 
 process_node *ParseProcesses();
+int _sum(process_node *, process_node *, int*, int, int);
+int CheckWinner(process_node*, unsigned long long, unsigned long long, int);
 int DrawWinner(process_node*, unsigned long long);
 unsigned long AssignTickets(process_node *);
 
+int _sum(process_node *p, process_node *r, int *accum, int winner, int bias)
+{ 
+	/* 
+	   Find a winning ticket within the bst structure by searching one side of the tree first, then the inverse of that side of the tree,
+	   then the opposite branch of the tree and the inverse of that branch - if you catch my drift? The 'bias' parameter determines whether the 
+	   accumulation of tickets traverses the right side or left side first. Use 'printTree' with a small tree to see how this works. 
+	   
+	   e.g. if bias is 1 and winner is 250 and each node in the tree has 50 tickets:
+	   
+	             50
+		        /  \
+	 (winner) 250  100
+				  /  \
+				 200  150
+			  
+	   It's not pretty but it works. */
+
+	if ( p == NULL ) return 0; 
+
+	*accum += p->tickets;
+	if ( *accum > winner ) 
+	{
+		r = p;
+		return 1;
+	} else 
+	{
+		switch(bias) 
+		{
+			case 0:
+				_sum(p->right, r, accum, winner, bias);
+				if ( *accum > winner ) return 0;
+				_sum(p->left, r, accum, winner, bias);
+				break;
+			case 1:
+				_sum(p->left, r, accum, winner, bias);
+				if ( *accum > winner ) return 0;
+				_sum(p->right, r, accum, winner, bias);
+				break;	
+		}
+	}
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
-	unsigned long max_tickets;
+	int pids[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+	int nices[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	process_node *head = createTree(pids, nices, 0, 9);
+	int accum = 0;
+	AssignTickets(head);
+	process_node *winner = (process_node *) ecmalloc(sizeof(process_node));
+	printTree(head, 0);
+	_sum(head, winner, &accum, 449, 0);
+
+	/*unsigned long max_tickets;
 	process_node *plist = NULL;
-	
 	plist = ParseProcesses();
 	max_tickets = AssignTickets(plist);
 	printTree(plist, 0);
-	printf("\n%lu\n", max_tickets);
-	free(plist);
+	printf("\n%lu -> %d\n", max_tickets, DrawWinner(plist, max_tickets));	
+	free(plist);*/
 }
 
 process_node *ParseProcesses() 
@@ -67,19 +120,11 @@ int DrawWinner(process_node *head, unsigned long long max_tickets)
 {
 	/* Randomise winner */
 	srand(time(NULL) * clock() / getpid());
-	process_node *current = head;
 	unsigned long long winner = rand() % max_tickets;
-	unsigned long long tickcount = 0;
-
+	//int preference = rand() % 2;
 	printf("Finding ticket holder: %llu\n", winner);
-
-	while(tickcount < winner) 
-	{
-		tickcount += current->tickets;
-		/* Traverse tree rather than list */
-	}
-
-	return current->pid;
+	return 0;	
+	//return CheckWinner(head, 0, winner, preference);	
 }
 
 unsigned long AssignTickets(process_node *head)
@@ -107,7 +152,5 @@ unsigned long AssignTickets(process_node *head)
 }
 
 /* TODO:
-	* Assign tickets to each process based upon max_ticket count and weighting formula (probably based upon niceness?)
-	* Add checking to DrawWinner
-	* Add sort before DrawWinner to sort list into order of most tickets (descending)./
+	Get draw winner working, will probably require a L,R,L,R alternating check and accumulation but the starting value should be swapped each time the function is run to keep the draw fair.	
 */
