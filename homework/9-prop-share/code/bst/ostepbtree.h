@@ -1,5 +1,5 @@
-#ifndef BTREE_H
-#define BTREE_H
+#ifndef OSTEPBTREE_H
+#define OSTEPBTREE_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +20,7 @@ process_node *_delete(process_node*, int);
 int _sum(process_node*, process_node**, unsigned long*, unsigned long, int);
 void padTree(int);
 void printTree(process_node*, int);
-process_node *createTree(int[], int[], int, int);
+process_node *createTree(int*, int*, int, int);
 
 void *ecmalloc(size_t nbytes)
 {
@@ -171,14 +171,12 @@ void printTree(process_node *n, int depth)
 	}
 }
 
-process_node *createTree(int pids[], int nices[], int start, int end)
+process_node *createTree(int *pids, int *nices, int start, int end)
 {
 	int mid;
-	process_node *root = NULL;
 	if ( start > end ) return NULL;
 	mid = start + (end-start) / 2;
-
-	root = insert(root, pids[mid], nices[mid]);
+	process_node *root = insert(NULL, pids[mid], nices[mid]);
 	root->left = createTree(pids, nices, start, mid-1);
 	root->right = createTree(pids, nices, mid+1, end);
 	return root;
