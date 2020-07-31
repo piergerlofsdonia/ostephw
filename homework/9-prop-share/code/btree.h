@@ -17,6 +17,7 @@ process_node *makeNode(int, int);
 process_node *minimum(process_node*);
 process_node *insert(process_node*, int, int);
 process_node *_delete(process_node*, int);
+int _sum(process_node*, process_node**, unsigned long*, unsigned long, int);
 void padTree(int);
 void printTree(process_node*, int);
 process_node *createTree(int[], int[], int, int);
@@ -101,6 +102,50 @@ process_node *minimum(process_node *n)
 	if ( n == NULL ) return NULL;
 	else if (n->left != NULL ) return minimum(n->left);
 	return n;
+}
+
+int _sum(process_node *p, process_node **w, unsigned long *accum, unsigned long winner, int bias)
+{ 
+	/* 
+	   Find a winning ticket within the bst structure by searching one side of the tree first, then the inverse of that side of the tree,
+	   then the opposite branch of the tree and the inverse of that branch - if you catch my drift? The 'bias' parameter determines whether the 
+	   accumulation of tickets traverses the right side or left side first. Use 'printTree' with a small tree to see how this works. 
+	   
+	   e.g. if bias is 1 and winner is 250 and each node in the tree has 50 tickets:
+	   
+	             50
+		        /  \
+	 (winner) 250  100
+				  /  \
+				 200  150
+			  
+	   It's not pretty but it works. */
+
+	if ( p == NULL ) return 0; 
+
+	*accum += p->tickets;
+	if ( *accum > winner ) 
+	{
+		*w = p;
+		return 1;
+	} else 
+	{
+		switch(bias) 
+		{
+			case 0:
+				_sum(p->right, w, accum, winner, bias);
+				if ( *accum > winner ) return 0;
+				_sum(p->left, w, accum, winner, bias);
+				break;
+			case 1:
+				_sum(p->left, w, accum, winner, bias);
+				if ( *accum > winner ) return 0;
+				_sum(p->right, w, accum, winner, bias);
+				break;	
+		}
+	}
+
+	return 0;
 }
 
 void padTree(int padding)
