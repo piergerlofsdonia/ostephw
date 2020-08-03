@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -28,6 +29,7 @@ static const int prio_to_weight[40] = {
 };
 
 size_t InitaliseProcesses(process_node**, int **pids, int **nices);
+size_t CheckProcesses(process_node**, int**, int**, size_t);
 float GenerateTimeSlice(process_node*, size_t, int*, int*);
 process_node *CheckWinner(process_node*, unsigned long, int);
 process_node *DrawWinner(process_node*, unsigned long long);
@@ -41,12 +43,35 @@ int main(int argc, char **argv)
 	process_node *plist = NULL;
 	process_node *winnode = NULL;
 	size_t npids = 0;
+	struct timeval start, stop;
+	float ms = 0.0;
+	float ts = 0.0;
 
+	// Initalise.
 	npids = InitaliseProcesses(&plist, &pids, &nices);
 	max_tickets = AssignTickets(plist);
 	winnode = DrawWinner(plist, max_tickets);
-	printf("%d\n", winnode->pid);
-	printf("Time slice: %f\n", GenerateTimeSlice(winnode, npids, pids, nices)); 
+	printf("%d\n%lu, %lu\n", winnode->pid, npids, max_tickets);
+	ts = GenerateTimeSlice(winnode, npids, pids, nices);
+	printf("Time slice: %f\n", ts); 
+	
+	while(1) 
+	{
+		gettimeofday(&start, NULL);
+		while ((ms = (float)(stop.tv_usec - start.tv_usec) / 1000 + (float)(stop.tv_sec - start.tv_sec) * 1000) < ts)
+		{
+			gettimeofday(&stop, NULL);
+		}
+	
+		printf("Timed: %fms\n", ms);
+	
+		npids = CheckProcesses(&plist, &pids, &nices, npids);
+		max_tickets = AssignTickets(plist);
+		winnode = DrawWinner(plist, max_tickets);
+		printf("%d\n%lu, %lu\n", winnode->pid, npids, max_tickets);
+		ts = GenerateTimeSlice(winnode, npids, pids, nices);
+		printf("Time slice: %f\n", ts); 
+	}
 	free(plist);
 }
 
@@ -99,10 +124,94 @@ size_t InitaliseProcesses(process_node **root, int **pidptr, int **niceptr)
 		}
 		printf("Parsed directory /proc/ [%u files]\n", npids);
 	}
-
+	
+	closedir(dirpath);
 	*pidptr = pids;
 	*niceptr = nices;
 	*root = createTree(pids, nices, 0, npids-1);
+	return npids;
+}
+
+size_t CheckProcesses(process_node **headptr, int **pidsptr, int **nicesptr, size_t npids)
+{
+	/* Read through running processes list (/proc/ directory) and check the values retrieved against the current pid list.
+	   If the value read is less than the pid at the same index, it needs to be inserted into the tree.
+	   If the value read is more than the pid at the same index, the pid used as a comparative (currently in the tree) needs to be removed. 
+	*/
+	
+	DIR *dirpath;
+	struct dirent *entry;
+	int readpid = 0;
+	int nicerating = 0;
+	unsigned i = 0;
+	int *pids = *pidsptr;
+	int *nices = *nicesptr;
+	process_node *head = *headptr;
+
+	dirpath = opendir("/proc/");
+	if ( dirpath == NULL ) 
+	{
+		perror("Cannot open directory: ");
+		exit(1);
+	}
+
+	while ((entry = readdir(dirpath)) != NULL )
+	{
+		readpid = atoi(entry->d_name);
+		if ( readpid > 0 ) {	
+			if ( i > npids ) 
+			{
+				printf("i too large, appending new pids... ");
+				/* If the value of i becomes greater than the number of elements in the present array
+				we need to start appending new pids */
+				nicerating = getpriority(PRIO_PROCESS, readpid);
+				head = insert(head, readpid, nicerating); 
+				pids = AppendElement(pids, npids, readpid);
+				nices = AppendElement(nices, npids, nicerating);
+				npids++;
+			}
+			else if ( readpid < pids[i] ) 
+			{
+				printf("readpid %d is less than pid at current index %d [%d], adding to tree... ", readpid, i, pids[i]);
+				/* If read pid is less than the pid at the current index, a new node needs to be added to the tree
+				and the array */
+				nicerating = getpriority(PRIO_PROCESS, readpid);
+				head = insert(head, readpid, nicerating);
+				pids = InsertElement(pids, npids, i, readpid);
+				nices = InsertElement(nices, npids, i, nicerating);
+				npids++;
+			} else if ( readpid > pids[i] ) 
+			{
+				printf("readpid %d is greater than pid at current index %d [%d] replacing it... ", readpid, i, pids[i]);
+				/* If the readpid is greater than the pid at the current index then the old pid no longer exists
+				and needs to be replaced by the new pid. */
+				nicerating = getpriority(PRIO_PROCESS, readpid);
+				head = _delete(head, pids[i]);
+				head = insert(head, readpid, nicerating);
+				pids = ReplaceElement(pids, npids, i, readpid);
+				nices = ReplaceElement(nices, npids, i, nicerating);
+			}
+			
+			i++;
+		}
+	}
+
+	if ( i < npids ) 
+	{
+		for ( unsigned n = npids-1; n >= i; n-- ) 
+		{
+			printf("Removing un-needed pid %d... ", pids[n]);
+			head = _delete(head, pids[n]);
+			pids = RemoveElement(pids, npids, n);
+			npids--;
+		}
+	}
+	
+	closedir(dirpath);
+	printf("\n");
+	*pidsptr = pids;
+	*nicesptr = nices;
+	*headptr = head;
 	return npids;
 }
 

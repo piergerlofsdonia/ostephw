@@ -6,6 +6,7 @@
 /* Function that removes or adds a value from an array and shifts up/down the values within that array accordingly. */
 int *InsertElement(int*, size_t, unsigned, int);
 int *AppendElement(int*, size_t, int);
+int *ReplaceElement(int *, size_t, unsigned, int);
 int *RemoveElement(int*, size_t, unsigned);
 void PrintArray(int *, size_t);
 
@@ -37,6 +38,19 @@ int *AppendElement(int *arrptr, size_t arrlen, int v)
 	arrlen++;
 	arrptr = (int *) realloc(arrptr, sizeof(int) * arrlen);
 	arrptr[arrlen-1] = v;
+	return arrptr;
+}
+
+int *ReplaceElement(int *arrptr, size_t arrlen, unsigned i, int v)
+{
+	if ( i > arrlen ) 
+	{
+		printf("%lu !<> %d\n", arrlen, i);
+		perror("Cannot replace element outside of array!");
+		exit(1);
+	}
+
+	arrptr[i] = v;
 	return arrptr;
 }
 
