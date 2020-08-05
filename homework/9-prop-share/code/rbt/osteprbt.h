@@ -21,15 +21,21 @@ process_node *NIL;
 
 void LeftRotate(process_node**, process_node*);
 void RightRotate(process_node**, process_node*);
+void Transplant(process_node **, process_node*, process_node*);
+void Remove(process_node**, int);
 void Insert(process_node**, int);
 void Fixup(process_node**, process_node*);
+void FixupDel(process_node**, process_node*);
+process_node *Search(process_node *, int);
+process_node *Minimum(process_node*);
+void PrintTree(process_node*, int);
 
 void LeftRotate(process_node **root, process_node *x)
 {
-	if ( x->right->parent == NULL ) return;
+	if ( x->right->parent == NIL ) { printf("Trying to rotate from a NIL node\n"); return; }
 	process_node *y = x->right;
 	x->right = y->left;
-	if ( y->left != NULL ) y->left->parent = NIL;
+	if ( y->left != NIL ) y->left->parent = NIL;
 	y->parent = x->parent;
 	if ( x->parent->key == 0 ) {
 		*root = y;
@@ -43,18 +49,17 @@ void LeftRotate(process_node **root, process_node *x)
 
 void RightRotate(process_node **root, process_node *y)
 {
-	if ( y->left->parent == NULL ) return;
+	if ( y->left->parent == NIL ) { printf("Trying to rotate from a NIL node\n"); return; }
 	process_node *x = y->left;
 	y->left = x->right;
-	if ( x->right != NULL ) x->right->parent = NIL;
+	if ( x->right != NIL ) x->right->parent = NIL;
 	x->parent = y->parent;
-	if ( y->parent->key == 0 ) { 
-		*root = x; 
-		x->parent = NIL; 
+	if ( y->parent == NIL ) { 
+		(*root) = x; 
 	} 
 	else if ( y == y->parent->left ) y->parent->left = x;
 	else y->parent->right = x;
-	x->left = y;
+	x->right = y;
 	y->parent = x;
 	
 }
@@ -79,6 +84,140 @@ void Insert(process_node **root, int key)
 	z->right = NIL;
 	z->colour = RED;
 	Fixup(root, z);
+}
+
+void Transplant(process_node **root, process_node *u, process_node *v)
+{
+	if ( u->parent == NIL ) (*root) = v;
+	else if ( u == u->parent->left ) u->parent->left = v;
+	else u->parent->right = v;
+	v->parent = u->parent;
+}
+
+process_node *Search(process_node *root, int key)
+{
+	if ( root == NIL || root->key == key ) return root;
+	else if ( root->key < key ) return Search(root->right, key);
+	else return Search(root->left, key);
+}
+
+process_node *Minimum(process_node *root)
+{
+	if ( root->left != NIL ) return Minimum(root);
+	else return root;
+}
+
+void Remove(process_node **root, int key)
+{
+	int saved_colour = -1;
+	process_node *z = (process_node *) malloc(sizeof(process_node));
+	process_node *y = (process_node *) malloc(sizeof(process_node));
+	process_node *x = (process_node *) malloc(sizeof(process_node));
+	z = Search((*root), key);
+	y = z;
+	saved_colour = y->colour;
+	if ( z->left == NIL ) 
+	{
+		x = z->right;
+		Transplant(root, z, z->right);
+	}
+	else if (z->right == NIL )
+	{
+		x = z->left;
+		Transplant(root, z, z->left);
+	}
+	else 
+	{
+		y = Minimum(z->right);
+		saved_colour = y->colour;
+		x = y->right;
+		if ( y->parent == z && x != NIL ) x->parent = y;
+		else 
+		{
+			Transplant(root, y, y->right);
+			y->right = z->right;
+			y->right->parent = y;
+		}
+		Transplant(root, z, y);
+		y->left = z->left;
+		y->left->parent = y;
+		y->colour = z->colour;
+	}
+	
+	if ( saved_colour == BLACK ) FixupDel(root, x); 
+}
+
+void FixupDel(process_node **root, process_node *x)
+{
+	process_node *w = (process_node *) malloc(sizeof(process_node));
+	while ( x != (*root) &&  x->colour == BLACK ) 
+	{
+		if ( x == x->parent->left ) 
+		{
+			if ( x == x->parent->left )
+			{
+				w = x->parent->right;
+				if ( w->colour == RED ) 
+				{
+					w->colour = BLACK;
+					x->parent->colour = RED;
+					LeftRotate(root, x->parent);
+					w = x->parent->right;
+				}
+				if ( w->left->colour == BLACK && w->right->colour == BLACK ) 
+				{
+					w->colour = RED;
+					x = x->parent;
+				}
+				else if ( w->right->colour == BLACK ) 
+				{
+					w->left->colour = BLACK;
+					w->colour = RED;
+					RightRotate(root, w);
+					w = x->parent->right;
+				}
+
+				w->colour = x->parent->colour;
+				x->parent->colour = BLACK;
+				w->right->colour = BLACK;
+				LeftRotate(root, x->parent);
+				x = (*root);
+			}
+		}
+		else
+		{
+			if ( x == x->parent->right ) 
+			{
+				w = x->parent->left;
+				if ( w->colour == RED ) 
+				{
+					w->colour = BLACK;
+					x->parent->colour = RED;
+					RightRotate(root, x->parent);
+					w = x->parent->left;
+				}
+				if ( w->right->colour == BLACK && w->left->colour == BLACK ) 
+				{
+					w->colour = RED;
+					x = x->parent;
+				}
+				else if ( w->left->colour == BLACK ) 
+				{
+					w->right->colour = BLACK;
+					w->colour = RED;
+					LeftRotate(root, w);
+					w = x->parent->left;
+				}
+
+				w->colour = x->parent->colour;
+				x->parent->colour = BLACK;
+				w->left->colour = BLACK;
+				RightRotate(root, x->parent);
+				x = (*root);
+			}
+		}
+	}
+	x->colour = BLACK;
 }
 
 void Fixup(process_node **root, process_node *z)
