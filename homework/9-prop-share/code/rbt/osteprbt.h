@@ -12,7 +12,9 @@ typedef struct node {
 	struct node *parent;
 	struct node *left;
 	struct node *right;
-	int key;
+	int pid;
+	int tickets;
+	int nicerating;
 	int colour;
 } process_node;
 
@@ -37,7 +39,7 @@ void LeftRotate(process_node **root, process_node *x)
 	x->right = y->left;
 	if ( y->left != NIL ) y->left->parent = NIL;
 	y->parent = x->parent;
-	if ( x->parent->key == 0 ) {
+	if ( x->parent->pid == 0 ) {
 		*root = y;
 		y->parent = NIL;
 	}
@@ -66,19 +68,40 @@ void RightRotate(process_node **root, process_node *y)
 
 void Insert(process_node **root, int key)
 {
+	/* Insert a new node into the tree.
+	  Three nodes are required for the insert operation: z represents the node-to-add; y represents, dependent on the portion of the 
+		operation, either the NIL node or the parent of the node-to-add; the x node represents the root node initially and will later 
+		be set to the leaf node-to-add.
+	*/
 	process_node *z = (process_node *) malloc(sizeof(process_node));
-	z->key = key;
+	z->pid = key;
 	process_node *y, *x;
-	y = NIL; x = *root;
-	while ( x->key != 0 ) 
+	y = NIL; x = *root; // Set y to NIL, x to ROOT.
+	
+	if ( x->pid == 0 ) // If the root node does not exist yet, replace it with z.
+	{
+		fprintf(stdout, "Input node [%d] is the root node.\n", key);
+		z->colour = BLACK;
+		z->pid = key;
+		z->parent = NIL;
+		z->left = NIL;
+		z->right = NIL;
+		*root = z;
+		return;
+	}
+	
+	fprintf(stdout, "Input node [%d] is not the root node, root is [%d]\n", key, (*root)->pid);
+	while ( x != NIL ) // Otherwise, traverse the tree setting y to the parent, x to the node until we find the node-to-add (LEAF node is equal to NIL).
 	{
 		y = x;
-		if ( z->key < x->key ) x = x->left;
+		if ( z->pid < x->pid ) x = x->left;
 		else x = x->right;
 	}
+
 	z->parent = y;
+	fprintf(stdout, "Input node [%d] has a parent [%d]\n", z->pid, z->parent->pid);
 	if ( y == NIL ) *root = z;
-	else if ( z->key < y->key ) y->left = z;
+	else if ( z->pid < y->pid ) y->left = z;
 	else y->right = z;
 	z->left = NIL;
 	z->right = NIL;
@@ -96,8 +119,8 @@ void Transplant(process_node **root, process_node *u, process_node *v)
 
 process_node *Search(process_node *root, int key)
 {
-	if ( root == NIL || root->key == key ) return root;
-	else if ( root->key < key ) return Search(root->right, key);
+	if ( root == NIL || root->pid == key ) return root;
+	else if ( root->pid < key ) return Search(root->right, key);
 	else return Search(root->left, key);
 }
 
@@ -114,6 +137,7 @@ void Remove(process_node **root, int key)
 	process_node *y = (process_node *) malloc(sizeof(process_node));
 	process_node *x = (process_node *) malloc(sizeof(process_node));
 	z = Search((*root), key);
+	if ( z == NIL ) return;
 	y = z;
 	saved_colour = y->colour;
 	if ( z->left == NIL ) 
@@ -222,54 +246,62 @@ void FixupDel(process_node **root, process_node *x)
 
 void Fixup(process_node **root, process_node *z)
 {
-	process_node *u = (process_node *) malloc(sizeof(process_node));
-	int semicase = -1; // 0 for p=g->left, 1 for p=g->right.
-
-	while ( z->parent->colour == RED && z != (*root)) 
+	// TODO: Fix this. In some circumstances (see: main c file), the tree ends up having an invalid number of black nodes.
+	/* Amend any rules violations caused by the most recent insert:
+	   * If black uncle/aunt, rotate - if red aunt/uncle, colour-flip.
+	*/
+		
+	process_node *u;
+	
+	while ( z->parent->colour == RED && z != (*root))
 	{
 		if ( z->parent == z->parent->parent->left ) 
-		{ 
+		{ // Uncle is right branch.
 			u = z->parent->parent->right;
-			semicase = 0;	
-		}
-		else 
-		{
-			u = z->parent->parent->left;
-			semicase = 1;
-		}
-		if ( u->colour == RED )
-		{
-			z->parent->colour = BLACK;
-			u->colour = BLACK;
-			z->parent->parent->colour = RED;
-			z = z->parent->parent;
-		}
-		else 
-		{
-			// Determine what configuration z is in (e.g. left-left, left-right, right-left, right-right).
-			switch(semicase)
+			if ( u->colour == RED ) 
 			{
-				case 0:
-					if ( z->key > z->parent->key ) LeftRotate(root, z->parent); // z is g->left->right. 	
-					RightRotate(root, z->parent->parent); // z is either g->left->left or has undergone left rotation.
-					break;
-				case 1:
-					if ( z->key < z->parent->key ) RightRotate(root, z->parent); // z is g->right->left.
-					LeftRotate(root, z->parent->parent); // z is either g->right->right or has undergone right rotation.
-					break;		
+				// COLOUR FLIP if uncle is red.
+				z->parent->colour = BLACK;
+				u->colour = BLACK;
+				z->parent->parent->colour = RED;
+				z = z->parent->parent;
 			}
-
-			z->parent->parent->colour = z->parent->colour; // Swap grandparent and parent colours.
-			z->parent->colour = (z->parent->colour == RED) ? BLACK : RED;
+			else if ( z == z->parent->right ) 
+			{
+				// ROTATE if uncle is black.
+				z = z->parent;
+				LeftRotate(root, z); // LR rotate.
+			}
+			z->parent->colour = BLACK;
+			z->parent->parent->colour = RED;
+			RightRotate(root, z->parent->parent); // Potential sole right-rotate.
+		} else
+		{ // Uncle is left branch.
+			u = z->parent->parent->left;
+			if ( u->colour == RED )
+			{
+				z->parent->colour = BLACK;
+				u->colour = BLACK;
+				z->parent->parent->colour = RED;
+				z = z->parent->parent;
+			}
+			else if ( z == z->parent->left )
+			{
+				z = z->parent;
+				RightRotate(root, z); // RL rotate.
+			}
+			z->parent->colour = BLACK;
+			z->parent->parent->colour = RED;
+			LeftRotate(root, z->parent->parent);
 		}
 	}
 
-	if ( z == (*root) ) z->colour = BLACK;
+	(*root)->colour = BLACK;
 }
 
 void PrintTree(process_node *root, int spacing)
 {
-	if ( root == NIL ) return;
+	if ( root->pid == 0 || root == NULL) return;
 	spacing += PCOUNT;
 	PrintTree(root->right, spacing);
 	printf("\n");
@@ -277,7 +309,7 @@ void PrintTree(process_node *root, int spacing)
 	{
 		printf(" ");
 	}
-	printf("[%d:%d]\n", root->key, root->colour);
+	printf("[%d:%d]\n", root->pid, root->colour);
 
 	PrintTree(root->left, spacing);
 }
