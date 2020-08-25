@@ -19,25 +19,15 @@
 #define SCHED_GRAN 2.25
 #define DIRPATH "/proc/"
 
-static const int prio_to_weight[40] = {
-		 /* -20 */     88761,     71755,     56483,     46273,     36291,
-		  /* -15 */     29154,     23254,     18705,     14949,     11916,
-		   /* -10 */      9548,      7620,      6100,      4904,      3906,
-		    /*  -5 */      3121,      2501,      1991,      1586,      1277,
-			 /*   0 */      1024,       820,       655,       526,       423,
-			  /*   5 */       335,       272,       215,       172,       137,
-			   /*  10 */       110,        87,        70,        56,        45,
-			    /*  15 */        36,        29,        23,        18,        15,
-};
 
 void *ecmalloc(size_t);
 DIR *OpenDirectoryStream();
-size_t InitaliseProcesses(process_node**, int **pids, int **nices);
+size_t InitaliseProcesses(process_node**, int **pids);
 size_t CheckProcesses(process_node**, int**, int**, size_t);
-float GenerateTimeSlice(process_node*, size_t, int*, int*);
+float GenerateTimeSlice(process_node *, process_node *);
 process_node *CheckWinner(process_node*, unsigned long, int);
 float DrawWinner(process_node *, process_node**, unsigned long, unsigned long);
-unsigned long AssignTickets(process_node *);
+process_node *GetWinner(process_node*, unsigned long long, int);
 void AverageResults(process_node[], float*, float*);
 
 void *ecmalloc(size_t nbytes)
@@ -61,69 +51,22 @@ int main(int argc, char **argv)
 
 	// 
 
-	unsigned long max_tickets;
 	int *pids = NULL;
-	int *nices = NULL;
-	process_node *winning_node = NULL;
-	process_node winners[RUNMAX];
 	size_t npids = 0;
-	float *times = (float *) ecmalloc(sizeof(float) * RUNMAX);
-	float *slices = (float *) ecmalloc(sizeof(float) * RUNMAX);
-	
-	npids = InitaliseProcesses(&ROOT, &pids, &nices);
-	
-	/*max_tickets = AssignTickets(plist);
-	times[i] = DrawWinner(plist, &winnode, i, max_tickets);
-	winners[i] = *winnode;
-	slices[i] = GenerateTimeSlice(&winners[i], npids, pids, nices);
-	i++;
-
-	for ( ; i < RUNMAX ; i++ ) 
-	{
-		npids = CheckProcesses(&plist, &pids, &nices, npids);
-		max_tickets = AssignTickets(plist);
-		times[i] = DrawWinner(plist, &winnode, i, max_tickets);
-		winners[i] = *winnode;
-		slices[i] = GenerateTimeSlice(&winners[i], npids, pids, nices);
-	}
-
-	AverageResults(winners, times, slices);
-
-	*/
-
+	float timev = 0.0;
+	unsigned long i = 0;	
+	process_node *winning_node = NULL;	
+	npids = InitaliseProcesses(&ROOT, &pids);
+	AssignNices(ROOT);
+	size_t max_tickets = AssignTickets(ROOT);
+	timev = DrawWinner(ROOT, &winning_node, i, max_tickets);
+	float time_slice = GenerateTimeSlice(ROOT, winning_node);
+	printf("Winning node: [%d] in time [%f], slice is [%f]ms {%f}\n", winning_node->pid, timev, time_slice, SCHED_GRAN);
 	free(ROOT);
 	free(pids);
-	free(nices);
-	free(times);
-	free(slices);
 }
 
-void AverageResults(process_node winners[], float *times, float *slices)
-{
-	/*
-		Average the results of the times and slices arrays. Print each winner, time, and slice to the standard 
-		output alongside the averages for the entire run.
-	*/
-	unsigned i = 0;
-	float timesum = 0.0;
-	float slicesum = 0.0;
-	float timeavg = 0.0;
-	float sliceavg = 0.0;
-
-	for ( ; i < RUNMAX ; i++ )
-	{
-		fprintf(stdout, "Winner for lottery draw %d: [pid: %d, nice: %d, tickets: %d, slice: %f] in a time of %fms.\n",
-					   	i, winners[i].pid, winners[i].nicerating, winners[i].tickets, slices[i], times[i]);
-		timesum += times[i];
-		slicesum += slices[i];
-	}
-
-	timeavg = timesum / RUNMAX;
-	sliceavg = slicesum / RUNMAX;
-	fprintf(stdout, "\nAverages: time-taken to draw [%fms]; time-slice [%fms].\n", timeavg, sliceavg); 
-}
-
-size_t InitaliseProcesses(process_node **root, int **pidptr, int **niceptr) 
+size_t InitaliseProcesses(process_node **root, int **pidptr) 
 {
 	/* 
 		Open the /proc/ directory and scan through the directory, if there is a numerical format item, get its priority (niceness) 
@@ -136,14 +79,11 @@ size_t InitaliseProcesses(process_node **root, int **pidptr, int **niceptr)
 	struct dirent *entry;
 	int pid = 0;
 	int *pids = NULL;
-	int *nices = NULL;
 
-	if ( pids == NULL || nices == NULL ) 
+	if ( pids == NULL ) 
 	{
 		pids = (int *) ecmalloc(sizeof(int));
 		pids[0] = 0;
-		nices = (int *) ecmalloc(sizeof(int));
-		nices[0] = 0;
 	}
 
 	while((entry = readdir(dirstream)) != NULL)
@@ -155,11 +95,9 @@ size_t InitaliseProcesses(process_node **root, int **pidptr, int **niceptr)
 			if ( npids == 0 ) 
 			{
 				pids = InsertElement(pids, npids, 0, pid);
-				nices = InsertElement(nices, npids, 0, getpriority(PRIO_PROCESS, pid));
 			} else 
 			{
 				pids = AppendElement(pids, npids, pid);
-				nices = AppendElement(nices, npids, getpriority(PRIO_PROCESS, pid));
 			}
 				
 			npids++;	
@@ -168,163 +106,9 @@ size_t InitaliseProcesses(process_node **root, int **pidptr, int **niceptr)
 	
 	closedir(dirstream);
 	*pidptr = pids;
-	*niceptr = nices;
-	*root = createTree(pids, nices, 0, npids-1);
-	return npids;
-}
-
-size_t CheckProcesses(process_node **headptr, int **pidsptr, int **nicesptr, size_t npids)
-{
-	/* Read through running processes list (/proc/ directory) and check the values retrieved against the current pid list.
-	   If the value read is less than the pid at the same index, it needs to be inserted into the tree.
-	   If the value read is more than the pid at the same index, the pid used as a comparative (currently in the tree) needs to be removed. 
-	*/
-		
-	DIR *dirstream = OpenDirectoryStream();
-	struct dirent *entry;
-	int readpid = 0;
-	int nicerating = 0;
-	unsigned i = 0;
-	int *pids = *pidsptr;
-	int *nices = *nicesptr;
-	process_node *head = *headptr;
-
-	while ((entry = readdir(dirstream)) != NULL )
-	{
-		readpid = atoi(entry->d_name);
-		if ( readpid > 0 ) {	
-			if ( i > npids ) 
-			{
-				/* If the value of i becomes greater than the number of elements in the present array
-				we need to start appending new pids */
-				nicerating = getpriority(PRIO_PROCESS, readpid);
-				head = insert(head, readpid, nicerating); 
-				pids = AppendElement(pids, npids, readpid);
-				nices = AppendElement(nices, npids, nicerating);
-				npids++;
-			}
-			else if ( readpid < pids[i] ) 
-			{
-				/* If read pid is less than the pid at the current index, a new node needs to be added to the tree
-				and the array */
-				nicerating = getpriority(PRIO_PROCESS, readpid);
-				head = insert(head, readpid, nicerating);
-				pids = InsertElement(pids, npids, i, readpid);
-				nices = InsertElement(nices, npids, i, nicerating);
-				npids++;
-			} 
-			else if ( readpid > pids[i] ) 
-			{
-				/* If the readpid is greater than the pid at the current index then the old pid no longer exists
-				and needs to be replaced by the new pid. */
-				nicerating = getpriority(PRIO_PROCESS, readpid);
-				head = _delete(head, pids[i]);
-				head = insert(head, readpid, nicerating);
-				pids = ReplaceElement(pids, npids, i, readpid);
-				nices = ReplaceElement(nices, npids, i, nicerating);
-			}
-			
-			i++;
-		}
-	}
-
-	if ( i < npids ) 
-	{
-		/* Remove residual pids from the original list that are no longer in the /proc/ directory (e.g. [1, 2, 3, 4] vs. [1, 2, 3] then remove 4). */
-		unsigned n = npids-1;
-		for (; n >= i; n--) 
-		{
-			head = _delete(head, pids[n]);
-			pids = RemoveElement(pids, npids, n);
-			npids--;
-			if ( n == i ) break;
-		}
-	}
-	
-	closedir(dirstream);
-	*pidsptr = pids;
-	*nicesptr = nices;
-	*headptr = head;
-	return npids;
-}
-
-process_node *CheckWinner(process_node *head, unsigned long winner, int bias)
-{
-	/* Run the _sum function to accumulate ticket values until we find the winner, then return that node.  */
-	process_node *winning_node = (process_node *) ecmalloc(sizeof(process_node));
-	unsigned long accum = 0;
-	_sum(head, &winning_node, &accum, winner, bias);
-	return winning_node;
-}
-
-float DrawWinner(process_node *head, process_node **winnode, unsigned long i, unsigned long max_tickets)
-{
-	/* 
-	   Randomise a winning ticket number between 0 and max_tickets, then search through the tree to find the winning pid.
-	   Time the majority of this function to find the time it takes to randomise the winner and find it in the bst.
-	   Return the time different in ms (floating point).
-	 */
-	struct timeval start, stop;
-	if ( *winnode == NULL ) *winnode = (process_node *) ecmalloc(sizeof(process_node));	
-	gettimeofday(&start, NULL);
-	/* Randomise winner */
-	srand(time(NULL) * clock() / getpid());
-	unsigned long long winner = rand() % max_tickets;
-	int bias = rand() % 2;
-	*winnode = CheckWinner(head, winner, bias);
-	gettimeofday(&stop, NULL);
-	
-	return (float)(stop.tv_usec - start.tv_usec) / 1000 + (float)(stop.tv_sec - start.tv_sec) * 1000;
-}
-
-unsigned long AssignTickets(process_node *head)
-{
-	/*
-	   For each node, assign a ticket value to it between 0 and 100 dependent on the node's niceness (e.g. +19 = 1 ticket, -20 = 100 tickets).
-	   Return the number of tickets allocated (accumulated value).
-	*/
-	if ( head == NULL ) return 0;
-
-	unsigned long tickets = 0;
-	unsigned utick = 0;
-	float ftick = 50.0;
-
-	if ( head->nicerating == 0 ) 
-	{
-		utick = ftick;
-	} else
-   	{
-		ftick = ftick - ( head->nicerating * 2.5);	
-		utick = ftick;
-	}
-	
-	head->tickets = utick;
-	tickets += utick;
-	tickets += AssignTickets(head->left);
-	tickets += AssignTickets(head->right);
-	return tickets;
-}
-
-float GenerateTimeSlice(process_node *node, size_t npids, int *pids, int *nices)
-{
-	/*
-		Generate a time slice value by dividing the weighted value of the node by the sum of all weights in the run queue.
-		If this value is less than the scheduler granularity minimum (min_granularity) then return this value, otherwise
-		return the value calculated.
-	*/
-	unsigned w;
-	long s_weights = 0;
-	unsigned weight = prio_to_weight[20+(node->nicerating)];
-	float ts = 0.0;
-
-	for ( w = 0; w < npids; w++ )
-	{
-		if ( pids[w] != node->pid ) s_weights += prio_to_weight[(20+nices[w])];
-	}
-	
-	ts = (float)(weight / s_weights) * SCHED_LATENCY;	
-	if ( ts < SCHED_GRAN ) return SCHED_GRAN;
-	else return ts;
+	unsigned long nnodes = CreateTree(root, pids, npids);
+	if ( nnodes == npids ) return npids;
+	else fprintf(stderr, "ERROR: Incorrect number of nodes [%lu : %u].\n", nnodes, npids); exit(1);
 }
 
 DIR *OpenDirectoryStream()
@@ -337,4 +121,38 @@ DIR *OpenDirectoryStream()
 	}
 
 	return dirstream;
+}
+
+float DrawWinner(process_node *root, process_node **winning_node, unsigned long i, unsigned long max_tix)
+{
+	struct timeval start, end;
+	if ( *winning_node == NULL ) *winning_node = (process_node *) ecmalloc(sizeof(process_node));
+	gettimeofday(&start, NULL);
+	srand(time(NULL) * clock() / getpid());
+	unsigned long long winner = rand() % max_tix;
+	int bias = rand() % 2;
+	*winning_node = GetWinner(root, winner, bias);
+	gettimeofday(&end, NULL);
+	return (float)(end.tv_usec - start.tv_usec) / 1000 + (float)(end.tv_sec - start.tv_sec) * 1000;
+}
+
+process_node *GetWinner(process_node *root, unsigned long long winner, int bias)
+{
+	process_node *winning_node = (process_node *) ecmalloc(sizeof(process_node));
+	unsigned long accum = 0;
+	SumToFind(root, &winning_node, &accum, winner, bias);
+	return winning_node;
+}
+
+float GenerateTimeSlice(process_node *root, process_node *winning_node)
+{
+	// Traverse to get sum of weighted pids. Get node, is the node the same as the input pid? If so, ignore it, if not, accumulate 
+	// the weighted conversion (20+nicerating) looked up in prio_to_weight table.
+	// Use returned weighted sum to calculate the time slice (weight of pid / summed weights) * SCHED_LATENCY; or SCHED_GRAN if < SCHED_GRAN.
+
+	long sum_weights = SumWeights(root, prio_to_weight[(20+root->nicerating)]);
+	int weight = prio_to_weight[(20+winning_node->nicerating)];
+	float ts = (float)(weight/sum_weights) * SCHED_LATENCY; 
+	ts = ( ts < SCHED_GRAN ) ? SCHED_GRAN : ts;
+	return ts;
 }

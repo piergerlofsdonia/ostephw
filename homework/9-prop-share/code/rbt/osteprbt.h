@@ -3,6 +3,9 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include "../bst/osteparray.h"
 
 #define RED 1
 #define BLACK 0
@@ -13,10 +16,21 @@ typedef struct node {
 	struct node *left;
 	struct node *right;
 	int pid;
-	int tickets;
+	unsigned tickets;
 	int nicerating;
 	int colour;
 } process_node;
+
+static const int prio_to_weight[40] = {
+		 /* -20 */     88761,     71755,     56483,     46273,     36291,
+		  /* -15 */     29154,     23254,     18705,     14949,     11916,
+		   /* -10 */      9548,      7620,      6100,      4904,      3906,
+		    /*  -5 */      3121,      2501,      1991,      1586,      1277,
+			 /*   0 */      1024,       820,       655,       526,       423,
+			  /*   5 */       335,       272,       215,       172,       137,
+			   /*  10 */       110,        87,        70,        56,        45,
+			    /*  15 */        36,        29,        23,        18,        15,
+};
 
 process_node *ROOT;
 process_node *NIL;
@@ -33,6 +47,11 @@ process_node *Minimum(process_node*);
 void PrintTree(process_node*, int);
 unsigned long countTreeR(process_node*);
 unsigned long countTree(process_node*);
+unsigned long CreateTree(process_node**, int*, size_t);
+void AssignNices(process_node*);
+unsigned long AssignTickets(process_node*);
+int SumToFind(process_node*, process_node**, unsigned long*, unsigned long, int);
+long SumWeights(process_node*, long);
 
 void LeftRotate(process_node **root, process_node *x)
 {
@@ -342,4 +361,76 @@ unsigned long countTreeR(process_node *n)
 	return c;
 }
 
+unsigned long CreateTree(process_node **root, int *pids, size_t npids)
+{
+	unsigned long i;
+	int *scrampids = (int *) calloc(npids, sizeof(int));
+	for ( i = 0; i < npids; i++ ) scrampids[i] = pids[i];
+	RandomiseArray(scrampids, npids);
+	for ( i = 0; i < npids; i++ ) Insert(root, scrampids[i]);
+	PrintTree(*root, 0);
+	return countTree(*root);
+}
+
+void AssignNices(process_node *n)
+{
+	if ( n->pid != 0 && n->nicerating != 0 ) n->nicerating = getpriority(PRIO_PROCESS, n->pid);
+	if ( n->left->pid != 0 ) AssignNices(n->left);
+	if ( n->right->pid != 0) AssignNices(n->right);
+}
+
+unsigned long AssignTickets(process_node *n)
+{
+	if ( n->pid == 0 ) return 0;
+
+	unsigned tickets = 0;
+	unsigned utick = 0;
+	float ftick = 50.0;
+
+	if ( n->nicerating != 0 ) ftick = ftick - ( n->nicerating * 2.5);
+	utick = ftick;
+	n->tickets = utick;
+	tickets+=utick;
+	tickets+=AssignTickets(n->left);
+	tickets+=AssignTickets(n->right);
+	return tickets;
+}	
+
+int SumToFind(process_node *n, process_node **winner, unsigned long *a, unsigned long w, int bias)
+{
+	if ( n == NULL || n->pid == 0 ) return 0;
+	*a += n->tickets;
+	if ( *a > w ) 
+	{
+		*winner = n;
+		return 1;
+	}
+	else 
+	{
+		switch(bias) // Bias determines the priority side of the tree to search (left first, or right first). 
+		{
+			case 0:
+				SumToFind(n->right, winner, a, w, bias);
+				if ( *a > w ) return 0;
+				SumToFind(n->left, winner, a, w, bias);
+				break;
+			case 1:
+				SumToFind(n->left, winner, a, w, bias);
+				if ( *a > w ) return 0;
+				SumToFind(n->right, winner, a, w, bias);
+				break;
+		}
+	}
+	
+	return 0;
+}
+
+long SumWeights(process_node *n, long a)
+{
+	if ( n->pid == 0 ) return 0;
+	if ( n->left->pid != 0 ) a+=SumWeights(n->left, a);
+	if ( n->right->pid != 0 ) a+=SumWeights(n->right, a);
+	
+	return prio_to_weight[(20+n->nicerating)];
+}
 #endif
