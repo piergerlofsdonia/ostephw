@@ -12,6 +12,18 @@ typedef struct node {
 	struct node *right;
 } process_node;
 
+
+static const int prio_to_weight[40] = {
+	/* -20 */     88761,     71755,     56483,     46273,     36291,
+	/* -15 */     29154,     23254,     18705,     14949,     11916,
+	/* -10 */      9548,      7620,      6100,      4904,      3906,
+	/*  -5 */      3121,      2501,      1991,      1586,      1277,
+	/*   0 */      1024,       820,       655,       526,       423,
+	/*   5 */       335,       272,       215,       172,       137,
+	/*  10 */       110,        87,        70,        56,        45,
+	/*  15 */        36,        29,        23,        18,        15,
+};
+
 void *ecmalloc(size_t);
 process_node *makeNode(int, int);
 process_node *minimum(process_node*);
@@ -21,6 +33,7 @@ int _sum(process_node*, process_node**, unsigned long*, unsigned long, int);
 void padTree(int);
 void printTree(process_node*, int);
 process_node *createTree(int*, int*, int, int);
+long SumWeights(process_node*, long);
 
 void *ecmalloc(size_t nbytes)
 {
@@ -180,6 +193,14 @@ process_node *createTree(int *pids, int *nices, int start, int end)
 	root->left = createTree(pids, nices, start, mid-1);
 	root->right = createTree(pids, nices, mid+1, end);
 	return root;
+}
+
+long SumWeights(process_node *n, long a)
+{
+	if ( n->pid == 0 ) return 0;
+	if ( n->left->pid != 0 ) a+=SumWeights(n->left, a);
+	if ( n->right->pid != 0) a+=SumWeights(n->right, a);
+	return prio_to_weight[(20+n->nicerating)];
 }
 
 #endif
