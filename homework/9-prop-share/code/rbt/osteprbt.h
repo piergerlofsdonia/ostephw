@@ -31,13 +31,15 @@ void FixupDel(process_node**, process_node*);
 process_node *Search(process_node *, int);
 process_node *Minimum(process_node*);
 void PrintTree(process_node*, int);
+unsigned long countTreeR(process_node*);
+unsigned long countTree(process_node*);
 
 void LeftRotate(process_node **root, process_node *x)
 {
 	if ( x->right->parent == NIL ) { printf("Trying to rotate from a NIL node\n"); return; }
 	process_node *y = x->right;
 	x->right = y->left;
-	if ( y->left != NIL ) y->left->parent = NIL;
+	if ( y->left->pid != 0 ) y->left->parent = NIL;
 	y->parent = x->parent;
 	if ( x->parent->pid == 0 ) {
 		*root = y;
@@ -47,6 +49,7 @@ void LeftRotate(process_node **root, process_node *x)
 	else x->parent->right = y;
 	y->left = x;
 	x->parent = y;
+	x->right->parent = x;
 }
 
 void RightRotate(process_node **root, process_node *y)
@@ -54,16 +57,16 @@ void RightRotate(process_node **root, process_node *y)
 	if ( y->left->parent == NIL ) { printf("Trying to rotate from a NIL node\n"); return; }
 	process_node *x = y->left;
 	y->left = x->right;
-	if ( x->right != NIL ) x->right->parent = NIL;
+	if ( x->right->pid != 0 ) x->right->parent = NIL;
 	x->parent = y->parent;
-	if ( y->parent == NIL ) { 
+	if ( y->parent->pid == 0 ) { 
 		(*root) = x; 
 	} 
 	else if ( y == y->parent->left ) y->parent->left = x;
 	else y->parent->right = x;
 	x->right = y;
 	y->parent = x;
-	
+	y->left->parent = y;
 }
 
 void Insert(process_node **root, int key)
@@ -80,7 +83,6 @@ void Insert(process_node **root, int key)
 	
 	if ( x->pid == 0 ) // If the root node does not exist yet, replace it with z.
 	{
-		fprintf(stdout, "Input node [%d] is the root node.\n", key);
 		z->colour = BLACK;
 		z->pid = key;
 		z->parent = NIL;
@@ -90,7 +92,6 @@ void Insert(process_node **root, int key)
 		return;
 	}
 	
-	fprintf(stdout, "Input node [%d] is not the root node, root is [%d]\n", key, (*root)->pid);
 	while ( x != NIL ) // Otherwise, traverse the tree setting y to the parent, x to the node until we find the node-to-add (LEAF node is equal to NIL).
 	{
 		y = x;
@@ -99,7 +100,6 @@ void Insert(process_node **root, int key)
 	}
 
 	z->parent = y;
-	fprintf(stdout, "Input node [%d] has a parent [%d]\n", z->pid, z->parent->pid);
 	if ( y == NIL ) *root = z;
 	else if ( z->pid < y->pid ) y->left = z;
 	else y->right = z;
@@ -246,7 +246,6 @@ void FixupDel(process_node **root, process_node *x)
 
 void Fixup(process_node **root, process_node *z)
 {
-	// TODO: Fix this. In some circumstances (see: main c file), the tree ends up having an invalid number of black nodes.
 	/* Amend any rules violations caused by the most recent insert:
 	   * If black uncle/aunt, rotate - if red aunt/uncle, colour-flip.
 	*/
@@ -265,6 +264,7 @@ void Fixup(process_node **root, process_node *z)
 				u->colour = BLACK;
 				z->parent->parent->colour = RED;
 				z = z->parent->parent;
+				PrintTree(*root, 0);
 			}
 			else {
 				if ( z == z->parent->right ) 
@@ -272,10 +272,12 @@ void Fixup(process_node **root, process_node *z)
 					// ROTATE if uncle is black.
 					z = z->parent;
 					LeftRotate(root, z); // LR rotate.
+					PrintTree(*root,0);
 				}
 				z->parent->colour = BLACK;
 				z->parent->parent->colour = RED;
 				RightRotate(root, z->parent->parent); // Potential sole right-rotate
+				PrintTree(*root, 0);
 			}
 		} else
 		{ // Uncle is left branch.
@@ -286,6 +288,7 @@ void Fixup(process_node **root, process_node *z)
 				u->colour = BLACK;
 				z->parent->parent->colour = RED;
 				z = z->parent->parent;
+				PrintTree(*root, 0);
 			}
 			else 
 			{	
@@ -293,10 +296,12 @@ void Fixup(process_node **root, process_node *z)
 				{
 					z = z->parent;
 					RightRotate(root, z); // RL rotate.
+					PrintTree(*root, 0);
 				}
 				z->parent->colour = BLACK;
 				z->parent->parent->colour = RED;
 				LeftRotate(root, z->parent->parent);
+				PrintTree(*root, 0);
 			}
 		}
 	}
@@ -317,6 +322,24 @@ void PrintTree(process_node *root, int spacing)
 	printf("[%d:%d]\n", root->pid, root->colour);
 
 	PrintTree(root->left, spacing);
+}
+
+unsigned long countTree(process_node *root)
+{
+	unsigned long c = 0;
+	if ( root->pid != 0 ) 
+	{
+		c+=countTreeR(root);
+	}
+	return c;
+}
+
+unsigned long countTreeR(process_node *n)
+{
+	unsigned long c = 1;
+	if ( n->left->pid != 0 ) c+=countTreeR(n->left);
+	if ( n->right->pid != 0) c+=countTreeR(n->right);
+	return c;
 }
 
 #endif

@@ -2,8 +2,7 @@
 
 #### Notes:
 
-* Hinze's<sup>[1]</sup> paper discusses the problem of constructing a red-black tree using a list of ascending values in linear time. 
-* In this paper's introductory pages, the simplest method of constructing a red-black tree is noted: "repeatedly insert elements into an empty initial tree" -  this is a _top down_ approach.
+* RBT structure code based on "Introduction to Algorithms" excerpts by Cormen et al.
 
 #### Compilation and running:
 * Compile and run `lotterysched.c`
@@ -12,9 +11,4 @@
 * Check the contents of `lottery.txt`.
 
 #### Sources:
-
-1: [Constructing Red-Black Trees, by Ralf Hinze](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.46.2171&rep=rep1&type=pdf).
-
-2:
-
 

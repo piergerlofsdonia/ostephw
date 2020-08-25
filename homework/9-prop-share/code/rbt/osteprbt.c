@@ -14,24 +14,30 @@ int main()
 	process_node *root = malloc(sizeof(process_node));
 	root->pid = 0;
 
-	int npids = 12;
-	//int *pids = calloc(npids, sizeof(int));
-	int pids[12] = {8, 6, 3, 2, 7, 10, 12, 4, 11, 9, 1, 5};
+	int npids = 1000;
+	int *pids = calloc(npids, sizeof(int));
+	//int pids[16] = {87, 10, 71, 45, 11, 54, 59, 15, 77, 5, 51, 82, 68, 2, 53, 60};
 	int i = 0;
 
-	//for (; i < npids; i++ ) pids[i] = i+1;
-	//RandomiseArray(pids, npids);
+	for (; i < npids; i++ ) pids[i] = i+1;
+	RandomiseArray(pids, npids);
 	PrintArray(pids, npids);
 	for (i=0; i < npids; i++) 
 	{
 		Insert(&root, pids[i]);
-		PrintTree(root, 0);
+		if ( countTree(root) != (i+1) ) 
+		{
+			fprintf(stdout, "ERROR: Incorrect number of nodes\n");
+			PrintTree(root, 0);
+			exit(1);
+		}
 	}
+	PrintTree(root, 0);
+	printf("NODES [%lu]\n", countTree(root));
 	free(root);
 	free(NIL);
 }
 
 /* TODO:
-1. Fix insert fix up algorithm, see header file for issue regarding black nodes. A further, probably-related issue occurs when using a large array, so there's probably a glaring issue with the implementation.
-2. Implement lottery draw using rbt.`
+1. Implement lottery draw using rbt.`
  */
