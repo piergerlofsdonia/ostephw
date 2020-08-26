@@ -5,6 +5,11 @@
 #include <stdio.h>
 #include <time.h>
 
+typedef struct freq {
+	int pid;
+	unsigned occurances;
+} frequency;
+
 /* Function that removes or adds a value from an array and shifts up/down the values within that array accordingly. */
 int *InsertElement(int*, size_t, unsigned, int);
 int *AppendElement(int*, size_t, int);
@@ -14,6 +19,7 @@ void PrintArray(int *, size_t);
 void SwapElements(int*, int*);
 void RandomiseArray(int*, size_t);
 long int RandomValue(long int);
+frequency *HighestFreq(int*, size_t);
 
 int *InsertElement(int *arrptr, size_t arrlen, unsigned i, int v) 
 {
@@ -115,6 +121,43 @@ long int RandomValue(long int max_r)
 {
 	srand(time(NULL));
 	return rand() % max_r;
+}
+
+frequency *HighestFreq(int *inparr, size_t arrsize)
+{
+	frequency *f = (frequency *) malloc(sizeof(int) * 2);
+	f->occurances = 0;
+	f->pid = 0;	
+	int *copyarr = (int *) calloc(1, sizeof(unsigned));
+	size_t copysize = 1;
+	unsigned o;
+
+	for ( unsigned i = 0; i < arrsize; i++ )
+	{	
+		if ( (i+1) > copysize ) 
+		{
+			copyarr = (int *) realloc(copyarr, (i+1) * sizeof(unsigned));
+			copysize++;
+		}
+		copyarr[i] = inparr[i];
+		o = 0;
+		for ( unsigned n = 0; n < copysize; n++ ) 
+		{
+			if ( copyarr[n] == inparr[i] ) o++;
+		}
+		if ( o > f->occurances ) 
+		{
+			f->occurances = o;
+			f->pid = inparr[i];
+		}
+	}
+
+	if ( f->pid == 0 )
+	{
+		f->pid = inparr[0];
+		f->occurances = 1;
+	}
+	return f;
 }
 
 #endif

@@ -43,6 +43,7 @@ void Insert(process_node**, int);
 void Fixup(process_node**, process_node*);
 void FixupDel(process_node**, process_node*);
 process_node *Search(process_node *, int);
+void SearchAssign(process_node *, int, int, int);
 process_node *Minimum(process_node*);
 void PrintTree(process_node*, int);
 unsigned long countTreeR(process_node*);
@@ -141,6 +142,23 @@ process_node *Search(process_node *root, int key)
 	if ( root == NIL || root->pid == key ) return root;
 	else if ( root->pid < key ) return Search(root->right, key);
 	else return Search(root->left, key);
+}
+
+void SearchAssign(process_node *root, int key, int param, int val)
+{
+	process_node *n = Search(root, key);
+	switch(param) 
+	{
+		case 0: // Tickets.
+			n->tickets = (unsigned) val;
+			break;
+		case 1: // Niceness.
+			n->nicerating = val;
+			break;
+		default: 
+			fprintf(stdout, "Incorrect switch parameter given to SearchAssign()\n");
+			break;	
+	}
 }
 
 process_node *Minimum(process_node *root)
@@ -283,7 +301,6 @@ void Fixup(process_node **root, process_node *z)
 				u->colour = BLACK;
 				z->parent->parent->colour = RED;
 				z = z->parent->parent;
-				PrintTree(*root, 0);
 			}
 			else {
 				if ( z == z->parent->right ) 
@@ -291,12 +308,10 @@ void Fixup(process_node **root, process_node *z)
 					// ROTATE if uncle is black.
 					z = z->parent;
 					LeftRotate(root, z); // LR rotate.
-					PrintTree(*root,0);
 				}
 				z->parent->colour = BLACK;
 				z->parent->parent->colour = RED;
 				RightRotate(root, z->parent->parent); // Potential sole right-rotate
-				PrintTree(*root, 0);
 			}
 		} else
 		{ // Uncle is left branch.
@@ -307,7 +322,6 @@ void Fixup(process_node **root, process_node *z)
 				u->colour = BLACK;
 				z->parent->parent->colour = RED;
 				z = z->parent->parent;
-				PrintTree(*root, 0);
 			}
 			else 
 			{	
@@ -315,12 +329,10 @@ void Fixup(process_node **root, process_node *z)
 				{
 					z = z->parent;
 					RightRotate(root, z); // RL rotate.
-					PrintTree(*root, 0);
 				}
 				z->parent->colour = BLACK;
 				z->parent->parent->colour = RED;
 				LeftRotate(root, z->parent->parent);
-				PrintTree(*root, 0);
 			}
 		}
 	}
@@ -368,7 +380,6 @@ unsigned long CreateTree(process_node **root, int *pids, size_t npids)
 	for ( i = 0; i < npids; i++ ) scrampids[i] = pids[i];
 	RandomiseArray(scrampids, npids);
 	for ( i = 0; i < npids; i++ ) Insert(root, scrampids[i]);
-	PrintTree(*root, 0);
 	return countTree(*root);
 }
 
