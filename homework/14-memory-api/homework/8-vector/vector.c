@@ -1,10 +1,6 @@
 /*
-	A recreation of the c++ vector STL using malloc, calloc, and realloc.
-
-TODO: 
-	1. Recreate 'erase' function.
-
-*/
+	A partial recreation of the c++ vector STL using malloc, calloc, and realloc.
+ */
 
 #include "vector.h"
 #include <stdlib.h>
@@ -20,6 +16,17 @@ int main()
 	VectorPopBack(&v);
 	VectorPrint(v);
 	VectorPopBack(&v);
+	VectorErase(&v, 0);
+	VectorPrint(v);
+	VectorPopBack(&v);
+	VectorPushBack(&v, 11);
+	VectorPrint(v);
+	VectorPushBack(&v, 10);
+	VectorPushBack(&v, 10);
+	VectorPushBack(&v, 2);
+	VectorPushBack(&v, 1);
+	VectorPrint(v);
+	VectorClear(&v);
 	VectorPrint(v);
 	free(v);
 }
@@ -83,8 +90,10 @@ int VectorPushBack(vector **vptr, int value)
 				return -1;
 			}
 		} else {
-			fprintf(stderr, "Data pointer is not allocated, check VectorPushBack()...\n");
-			exit(1);
+			// Data has been removed leaving the v->data pointer as a null pointer, reinitalise it and fill with data.
+			v->data = ecrealloc(v->data, 1);
+			v->data[0] = value;
+			v->size++;
 		}
 	} 
 	else 
@@ -116,8 +125,8 @@ int VectorPopBack(vector **vptr)
 		}
 		else 
 		{
-			fprintf(stderr, "Data pointer is not allocated (null ptr), check VectorPopBack()...\n");
-			exit(1);
+			fprintf(stdout, "No data in vector (v->data is null pointer), so there is nothing to pop!\n");
+			return -1;
 		}
 	}
 	else 
@@ -138,5 +147,65 @@ void VectorPrint(vector *v)
 		fprintf(stdout, "[");
 		for ( size_t i = 0; i < (v->size-1); i++ ) fprintf(stdout, "%d, ", v->data[i]);
 		fprintf(stdout, "%d]\n", v->data[v->size-1]);
+	} 
+	else if ( v != NULL && v->data == NULL ) fprintf(stdout, "[] (no data in vector, v->data is null pointer)\n");
+}
+
+int VectorErase(vector **vptr, int index)
+{
+	// Removes element at an index, pushing back the proceeding elements to fill its place. Decrement size.
+	// e.g. [1, 2, 3, 4] -> VectorErase(<ptr>, 1); -> [1, 3, 4].
+	
+	vector *v = *vptr;
+	
+	if ( v != NULL && v->size > 0 && v->data != NULL) 
+	{
+		if ( index >= v->size ) 
+		{
+			fprintf(stdout, "Cannot erase an index outside the bounds of the vector [%d vs. %lu]...\n", index, v->size);
+			return -1;
+		}
+		if ( v->size == 1 ) 
+		{
+			// Remove the sole element, reallocate to zero (will make v->data a NULL pointer).
+			v->data[index] = 0;
+			v->size = 0;
+			v->data = ecrealloc(v->data, 0);
+		}
+		else
+		{
+			v->data[index] = 0;
+			for ( size_t i = (index+1); i < (v->size-1); i++ ) 
+			{
+				v->data[i] = v->data[i+1];
+			}
+			return VectorPopBack(&v);
+		}
 	}
+	else 
+	{
+		fprintf(stdout, "Cannot erase index from element because either the vector or data does not exist (NULL pointer).\n");
+		return -1;
+	}
+
+	*vptr = v;
+	return 1;
+}
+
+int VectorClear(vector **vptr)
+{
+	vector *v = *vptr;
+	
+	if ( v != NULL ) 
+	{
+		if ( v->data != NULL )
+		{
+			for ( size_t i = 0; i < v->size; i++ ) v->data[i] = 0;
+			v->data = ecrealloc(v->data, 0);
+			v->size = 0;	
+		}
+	}
+
+	*vptr = v;
+	return 1;
 }

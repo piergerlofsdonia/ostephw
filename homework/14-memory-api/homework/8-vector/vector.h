@@ -18,4 +18,7 @@ int VectorBack(vector*);
 int VectorPushBack(vector**, int);
 int VectorPopBack(vector**);
 void VectorPrint(vector*);
+int VectorErase(vector**, int);
+int VectorClear(vector**);
+
 #endif
