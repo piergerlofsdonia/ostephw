@@ -11,6 +11,11 @@ typedef struct struct_vector
 } vector;
 
 void *ecmalloc(size_t);
-vector *InitaliseVector(size_t);
-
+int *ecrealloc(int*, size_t);
+vector *InitaliseVector(size_t, int);
+int VectorFront(vector*);
+int VectorBack(vector*);
+int VectorPushBack(vector**, int);
+int VectorPopBack(vector**);
+void VectorPrint(vector*);
 #endif
