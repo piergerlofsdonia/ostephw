@@ -11,7 +11,7 @@
 #### Currently working on:
 _Project:_ `reverse (simple and easy); s.u.s.s (simple unix-style shell) `
   
-_Homework:_ `ch 8`
+_Homework:_ `ch 15`
 
 #### Note:
 
