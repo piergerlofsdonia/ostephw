@@ -13,6 +13,8 @@ typedef struct s_node {
 node *splitBlock(node*, size_t);
 node *allocateBlock(node*);
 node *firstFit(node*, size_t);
+node *coalesceBlocks(node*);
+void printBlocks(node*);
 
 int main()
 {
@@ -32,20 +34,24 @@ int main()
 	head->sptr = head + 1; // Set start of memory block in new pointer.
 	head->isfree = 1;
 	head->next = NULL;
-	head = splitBlock(head, 0);
+	node *n = head;
+	n = splitBlock(n, 154);
+	printBlocks(head);
+	n = splitBlock(n->next, 250);
+	printBlocks(head);
 	if ( head == NULL ) {
 		fprintf(stdout, "Error whilst assigning, size was invalid for a split\n");
 		exit(1);
 	}
-	fprintf(stdout, "[%d, %d]->[%d, %d]\n", head->size, head->isfree, head->next->size, head->next->isfree);
-	fprintf(stdout, "[%p, %p]->[%p, %p]\n", head, head->sptr, head->next, head->next->sptr);
+	head->next->next->isfree = 0;	
+	coalesceBlocks(head);
+	printBlocks(head);
 }
 
 node *splitBlock(node *blockptr, size_t fixsize)
 {
 	size_t nbytes = blockptr->size + sizeof(node);	
 	node *nptr = NULL;
-	
 
 	switch(fixsize) {
 		case 0: // We want two blocks of equal size.
@@ -55,7 +61,6 @@ node *splitBlock(node *blockptr, size_t fixsize)
 			blockptr->size = fixsize - sizeof(node);
 			nptr = (node *) malloc(fixsize);
 			nptr->size = blockptr->size;
-			nptr->sptr = nptr + 1;
 			break;
 		default:
 			if ( fixsize < (blockptr->size-(sizeof(node)+1)) ) blockptr = realloc(blockptr, fixsize+sizeof(node));
@@ -64,18 +69,39 @@ node *splitBlock(node *blockptr, size_t fixsize)
 			fixsize = nbytes - (fixsize+sizeof(node));
 			nptr = (node *) malloc(fixsize);
 			nptr->size = fixsize-sizeof(node);
-			nptr->sptr = nptr + 1;
 			break;
 		}
-		
-		// If fixsize is zero, split block into two blocks of equal size.
-		
+	
+	nptr->sptr = nptr + 1;	
 	if ( blockptr->next == NULL ) nptr->next = NULL;
 	else nptr->next = blockptr->next;
 	nptr->isfree = 1;
 	blockptr->next = nptr;
 		
 	return blockptr;
+}
+
+node *coalesceBlocks(node *blockptr)
+{
+	if ( blockptr == NULL ) return NULL;
+	else if ( blockptr->next == NULL ) return blockptr;
+
+	if ( blockptr->isfree > 0 && blockptr->next->isfree > 0 ) 
+	{
+		// Merge blocks together, restart with blockptr.
+		// Reallocate blockptr to make it as big as blockptr + size (with header) of blockptr->next.
+		// Update size of blockptr.
+		// Copy heirarchy (set tempptr as blockptr->next->next, set blockptr->next->next = NULL, set blockptr->next = tempptr).
+		int newsize = blockptr->size + blockptr->next->size;
+		blockptr->size = newsize + sizeof(node);
+		node *tempptr = blockptr->next->next;
+		blockptr->next->next = NULL;
+		free(blockptr->next);
+		blockptr->next = tempptr;
+		return coalesceBlocks(blockptr);
+	}
+	else if ( blockptr->isfree <= 0 ) return coalesceBlocks(blockptr->next);
+	else return NULL; 
 }
 
 node *firstFit(node *head, size_t nbytes)
@@ -89,3 +115,15 @@ node *firstFit(node *head, size_t nbytes)
 	return NULL;
 }
 
+void printBlocks(node *head)
+{
+	if ( head == NULL ) return;
+	else {
+		while ( head != NULL ) 
+		{
+			fprintf(stdout, "[%lu | %d | %d]->", sizeof(node), head->size, head->isfree);
+			head = head->next;	
+		}
+		fprintf(stdout, "%p\n", head);
+	}
+}
