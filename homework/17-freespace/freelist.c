@@ -3,6 +3,12 @@
 #include <sys/mman.h>
 #include <stdio.h>
 
+typedef struct datum {
+	int *datarr;
+	unsigned size;
+	// unsigned capacity;
+} data;
+
 typedef struct s_node {
 	int size;
 	int isfree;
@@ -13,7 +19,9 @@ typedef struct s_node {
 node *splitBlock(node*, size_t);
 node *allocateBlock(node*);
 node *firstFit(node*, size_t);
+node *findFirstFit(node*, size_t);
 node *coalesceBlocks(node*);
+
 void printBlocks(node*);
 
 int main()
@@ -28,6 +36,7 @@ int main()
 	
 	// Build a simulation of a memory management system.
 	// Employ each technique (best fit, worst fit, etc).
+	// TODO: Add data structure and implement adding it to the allocated block. Add freeing, look at fixing valgrind errors (invalid reads + reallocs).
 	size_t nbytes = 4096;
 	node *head = (node *) malloc(sizeof(node) + nbytes);
 	head->size = nbytes;
@@ -35,16 +44,17 @@ int main()
 	head->isfree = 1;
 	head->next = NULL;
 	node *n = head;
-	n = splitBlock(n, 154);
+	splitBlock(head, 0);
+	splitBlock(head->next, 0);
+	head->isfree = 0;
+	head->next->isfree = 0;
 	printBlocks(head);
-	n = splitBlock(n->next, 250);
-	printBlocks(head);
+	n = findFirstFit(head, 1001);
+	printBlocks(n);
 	if ( head == NULL ) {
 		fprintf(stdout, "Error whilst assigning, size was invalid for a split\n");
 		exit(1);
 	}
-	head->next->next->isfree = 0;	
-	coalesceBlocks(head);
 	printBlocks(head);
 }
 
@@ -52,7 +62,6 @@ node *splitBlock(node *blockptr, size_t fixsize)
 {
 	size_t nbytes = blockptr->size + sizeof(node);	
 	node *nptr = NULL;
-
 	switch(fixsize) {
 		case 0: // We want two blocks of equal size.
 			if ( floor((float)(nbytes / 2)) <= sizeof(node) ) return NULL; // Cannot split the block if its size is less than (sizeof(node)+1) * 2.
@@ -63,7 +72,10 @@ node *splitBlock(node *blockptr, size_t fixsize)
 			nptr->size = blockptr->size;
 			break;
 		default:
-			if ( fixsize < (blockptr->size-(sizeof(node)+1)) ) blockptr = realloc(blockptr, fixsize+sizeof(node));
+			if ( fixsize < (blockptr->size-(sizeof(node)+1)) ) 
+			{
+				blockptr = realloc(blockptr, fixsize+sizeof(node));
+			}
 			else return NULL; // Block resize cannot be greater than block-size and must be smaller enough to split block into two. TODO: Add a clause to simply return the block in an edge case.
 			blockptr->size = fixsize;
 			fixsize = nbytes - (fixsize+sizeof(node));
@@ -94,6 +106,7 @@ node *coalesceBlocks(node *blockptr)
 		// Copy heirarchy (set tempptr as blockptr->next->next, set blockptr->next->next = NULL, set blockptr->next = tempptr).
 		int newsize = blockptr->size + blockptr->next->size;
 		blockptr->size = newsize + sizeof(node);
+		blockptr = realloc(blockptr, blockptr->size + sizeof(node));
 		node *tempptr = blockptr->next->next;
 		blockptr->next->next = NULL;
 		free(blockptr->next);
@@ -112,7 +125,26 @@ node *firstFit(node *head, size_t nbytes)
 	// Are we at the end with no match? Coalesce and repeat.
 	// Are we at the end after coalescing the blocks? We need to ask for more memory by reallocating (this would be sys call in the OS [sbrk] in a real system).
 	// When done, mark the block as in use and return it. 
+	if ( head == NULL ) return NULL;
+
+	if ( head->isfree > 0 && head->size >= nbytes ) // Number of bytes requires is fufilled by the block and it is free. 
+	{
+		if ( head->size > nbytes ) splitBlock(head, nbytes);
+		head->isfree = 0;
+		return head;
+	}
+	else return firstFit(head->next, nbytes);
 	return NULL;
+}
+
+node *findFirstFit(node *head, size_t nbytes)
+{
+	node *n = firstFit(head, nbytes);
+	if ( n == NULL ) {
+		coalesceBlocks(head);
+		return firstFit(head, nbytes);
+	} 
+	else return n;
 }
 
 void printBlocks(node *head)
